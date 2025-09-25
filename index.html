@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>📊 Crypto Dashboard – Multi-Timeframe Search Fixed</title>
+<title>📊 Crypto Dashboard – Fixed</title>
 <style>
 body{font-family:tahoma,Arial,sans-serif;direction:rtl;background:#f5f7fb;margin:0}
 header{background:#1e88e5;color:#fff;padding:14px 10px;text-align:center}
@@ -30,7 +30,7 @@ tr:hover{background:#fafcff}
 </head>
 <body>
 <header>
-<h2>📊 Crypto Dashboard – Multi-Timeframe Search Fixed</h2>
+<h2>📊 Crypto Dashboard – Fixed</h2>
 <div style="font-size:12px;opacity:.9">منبع داده: Binance (OHLCV) از طریق Codetabs Proxy | اندیکاتورها در مرورگر محاسبه می‌شوند</div>
 </header>
 
@@ -53,50 +53,18 @@ tr:hover{background:#fafcff}
 <table id="crypto-table">
 <thead>
 <tr>
-<th>Symbol</th>
-<th>Interval</th>
-<th>Price</th>
-<th>RSI(14)</th>
-<th>EMA9</th>
-<th>EMA20</th>
-<th>EMA50</th>
-<th>EMA100</th>
-<th>EMA200</th>
-<th>MACD</th>
-<th>Signal</th>
-<th>L</th>
-<th>S</th>
-<th>PP</th>
-<th>Long</th>
-<th>Short</th>
-<th>Entry</th>
-<th>Exit (TP/SL)</th>
-<th>Support</th>
-<th>Resistance</th>
-<th>تثبیت روی حمایت؟</th>
-<th>تثبیت روی مقاومت؟</th>
-<th>Breakout</th>
-<th>Bounce</th>
-<th>Golden Cross</th>
-<th>Rally</th>
+<th>Symbol</th><th>Interval</th><th>Price</th><th>RSI(14)</th><th>EMA9</th><th>EMA20</th><th>EMA50</th><th>EMA100</th><th>EMA200</th><th>MACD</th><th>Signal</th><th>L</th><th>S</th><th>PP</th><th>Long</th><th>Short</th><th>Entry</th><th>Exit (TP/SL)</th><th>Support</th><th>Resistance</th><th>تثبیت روی حمایت؟</th><th>تثبیت روی مقاومت؟</th><th>Breakout</th><th>Bounce</th><th>Golden Cross</th><th>Rally</th>
 </tr>
 </thead>
 <tbody></tbody>
 </table>
 </div>
 
-<div class="note">
-نکته: این ابزار صرفاً آموزشی است و سیگنال قطعی معامله محسوب نمی‌شود.
-</div>
+<div class="note">نکته: این ابزار صرفاً آموزشی است و سیگنال قطعی معامله محسوب نمی‌شود.</div>
 </div>
 
 <script>
-const SYMBOLS = [
-"BTCUSDT","ETHUSDT","BNBUSDT","XRPUSDT","SOLUSDT",
-"ADAUSDT","DOGEUSDT","TRXUSDT","MATICUSDT","DOTUSDT",
-"LTCUSDT","AVAXUSDT","LINKUSDT","ATOMUSDT","ETCUSDT",
-"XLMUSDT","FILUSDT","APTUSDT","NEARUSDT","ARBUSDT"
-];
+const SYMBOLS = ["BTCUSDT","ETHUSDT","BNBUSDT","XRPUSDT","SOLUSDT","ADAUSDT","DOGEUSDT","TRXUSDT","MATICUSDT","DOTUSDT","LTCUSDT","AVAXUSDT","LINKUSDT","ATOMUSDT","ETCUSDT","XLMUSDT","FILUSDT","APTUSDT","NEARUSDT","ARBUSDT"];
 const INTERVALS = ["5m","15m","1h","4h","1d"];
 const PROXY = url=>`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`;
 const fmt=(n,d=2)=>(n==null||isNaN(n)?"-":Number(n).toLocaleString(undefined,{maximumFractionDigits:d}));
@@ -108,10 +76,7 @@ function rsi(values,period=14){if(!values||values.length<period+1)return[];let g
 function macd(values,fast=12,slow=26,signalPeriod=9){const ef=ema(values,fast);const es=ema(values,slow);const macdLine=ef.map((v,i)=>(es[i]==null?null:(v-es[i])));const start=slow;const macdValid=macdLine.slice(start).filter(v=>v!=null);const signalPart=ema(macdValid,signalPeriod);const signalLine=new Array(start).fill(null).concat(signalPart);return {macdLine,signalLine};}
 function atr(highs,lows,closes,period=14){const trs=[];for(let i=0;i<highs.length;i++){if(i===0){trs.push(highs[i]-lows[i]);continue;}const hl=highs[i]-lows[i];const hc=Math.abs(highs[i]-closes[i-1]);const lc=Math.abs(lows[i]-closes[i-1]);trs.push(Math.max(hl,hc,lc));}if(trs.length<period)return[];let rma=trs.slice(0,period).reduce((a,b)=>a+b,0)/period;const out=new Array(period-1).fill(null);out.push(rma);for(let i=period;i<trs.length;i++){rma=(rma*(period-1)+trs[i])/period;out.push(rma);}return out;}
 
-function setLoading(state){
-  document.getElementById('refreshBtn').disabled = state;
-  document.getElementById('refreshBtn').textContent = state ? 'در حال بروزرسانی…' : 'بروزرسانی';
-}
+function setLoading(state){document.getElementById('refreshBtn').disabled=state;document.getElementById('refreshBtn').textContent=state?'در حال بروزرسانی…':'بروزرسانی';}
 
 async function fetchKlines(symbol,interval="15m",limit=300){
   const res=await fetch(PROXY(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`));
@@ -130,47 +95,41 @@ async function fetchDailyPivot(symbol){
   return (H+L+C)/3;
 }
 
-// پردازش جدول
+// تابع اصلی ساخت جدول
 async function buildTable(symbolFilter=null, allIntervals=false){
-  const tbody = document.querySelector("#crypto-table tbody");
-  if(!symbolFilter) tbody.innerHTML=""; // فقط در حالت پیش‌فرض پاک شود
+  const tbody=document.querySelector("#crypto-table tbody");
+  if(!symbolFilter) tbody.innerHTML=""; // پاک کردن جدول فقط در پردازش اصلی
   setLoading(true);
 
-  const selectedInterval = document.getElementById("interval").value;
+  const selectedInterval=document.getElementById("interval").value;
   const symbolsToProcess = symbolFilter ? SYMBOLS.filter(s=>s.includes(symbolFilter)) : SYMBOLS;
   const intervalsToProcess = allIntervals ? INTERVALS : [selectedInterval];
 
   try{
     for(const symbol of symbolsToProcess){
-      // پردازش همه تایم‌فریم‌ها همزمان
       const intervalPromises = intervalsToProcess.map(async interval=>{
         try{
           const [kl,pp] = await Promise.all([fetchKlines(symbol,interval,300),fetchDailyPivot(symbol)]);
-          const closes = kl.map(k=>+k[4]), highs=kl.map(k=>+k[2]), lows=kl.map(k=>+k[3]), last=closes.at(-1);
-          const ema9v = ema(closes,9).at(-1), ema20v = ema(closes,20).at(-1), ema50v = ema(closes,50).at(-1), ema100v = ema(closes,100).at(-1), ema200v = ema(closes,200).at(-1);
-          const rsiv = rsi(closes,14).at(-1);
-          const {macdLine,signalLine} = macd(closes,12,26,9);
-          const macdv = macdLine.at(-1), sigv = signalLine.at(-1);
-          const atrv = atr(highs,lows,closes,14).at(-1);
-
-          const longCond = last>ema20v && macdv!=null && sigv!=null && macdv>sigv && rsiv>50;
-          const shortCond = last<ema20v && macdv!=null && sigv!=null && macdv<sigv && rsiv<50;
-
-          let entry="-", exitPlan="-";
-          if(longCond && atrv){ entry=last.toFixed(4); exitPlan=`TP:${(last+1.5*atrv).toFixed(4)} | SL:${(last-1*atrv).toFixed(4)}`;}
-          else if(shortCond && atrv){ entry=last.toFixed(4); exitPlan=`TP:${(last-1.5*atrv).toFixed(4)} | SL:${(last+1*atrv).toFixed(4)}`;}
-
-          const last20 = closes.slice(-20), support=Math.min(...last20), resistance=Math.max(...last20);
-          const onSupport = withinPct(last,support,0.3)?"✅":"—";
-          const onResistance = withinPct(last,resistance,0.3)?"✅":"—";
-          const breakout = last>resistance*1.002?"✅":"—";
-          const prevRsi = rsi(closes,14).slice(-2)[0];
-          const bounce = withinPct(last,support,0.3)&&prevRsi!=null&&rsiv>prevRsi?"✅":"—";
-
-          const ema50Prev = ema(closes,50).slice(-2)[0], ema200Prev = ema(closes,200).slice(-2)[0];
-          const golden = (ema50Prev!=null && ema200Prev!=null && ema50Prev<ema200Prev && ema50v>ema200v)?"✅":"—";
-          const rally = (last>ema9v && last>ema20v && rsiv>70 && macdv>sigv)?"✅":"—";
-
+          const closes=kl.map(k=>+k[4]),highs=kl.map(k=>+k[2]),lows=kl.map(k=>+k[3]),last=closes.at(-1);
+          const ema9v=ema(closes,9).at(-1), ema20v=ema(closes,20).at(-1), ema50v=ema(closes,50).at(-1), ema100v=ema(closes,100).at(-1), ema200v=ema(closes,200).at(-1);
+          const rsiv=rsi(closes,14).at(-1);
+          const {macdLine,signalLine}=macd(closes,12,26,9);
+          const macdv=macdLine.at(-1), sigv=signalLine.at(-1);
+          const atrv=atr(highs,lows,closes,14).at(-1);
+          const longCond=last>ema20v && macdv!=null && sigv!=null && macdv>sigv && rsiv>50;
+          const shortCond=last<ema20v && macdv!=null && sigv!=null && macdv<sigv && rsiv<50;
+          let entry="-",exitPlan="-";
+          if(longCond && atrv){entry=last.toFixed(4); exitPlan=`TP:${(last+1.5*atrv).toFixed(4)} | SL:${(last-1*atrv).toFixed(4)}`;}
+          else if(shortCond && atrv){entry=last.toFixed(4); exitPlan=`TP:${(last-1.5*atrv).toFixed(4)} | SL:${(last+1*atrv).toFixed(4)}`;}
+          const last20=closes.slice(-20), support=Math.min(...last20), resistance=Math.max(...last20);
+          const onSupport=withinPct(last,support,0.3)?"✅":"—";
+          const onResistance=withinPct(last,resistance,0.3)?"✅":"—";
+          const breakout=last>resistance*1.002?"✅":"—";
+          const prevRsi=rsi(closes,14).slice(-2)[0];
+          const bounce=withinPct(last,support,0.3)&&prevRsi!=null&&rsiv>prevRsi?"✅":"—";
+          const ema50Prev=ema(closes,50).slice(-2)[0], ema200Prev=ema(closes,200).slice(-2)[0];
+          const golden=(ema50Prev!=null && ema200Prev!=null && ema50Prev<ema200Prev && ema50v>ema200v)?"✅":"—";
+          const rally=(last>ema9v && last>ema20v && rsiv>70 && macdv>sigv)?"✅":"—";
           const macdClass=(macdv!=null && sigv!=null && (macdv-sigv)>=0)?"positive":"negative";
           const longBadge=longCond?'<span class="badge good">✅</span>':'<span class="badge neutral">—</span>';
           const shortBadge=shortCond?'<span class="badge bad">⚠</span>':'<span class="badge neutral">—</span>';
@@ -213,14 +172,14 @@ async function buildTable(symbolFilter=null, allIntervals=false){
       await Promise.all(intervalPromises);
     }
   }finally{
-    document.getElementById("lastUpdate").textContent = "آخرین بروزرسانی: "+new Date().toLocaleString();
+    document.getElementById("lastUpdate").textContent="آخرین بروزرسانی: "+new Date().toLocaleString();
     setLoading(false);
   }
 }
 
 // اتصالات UI
 document.getElementById('refreshBtn').addEventListener('click',()=>{
-  const symbolSearch = document.getElementById('searchBox').value.trim().toUpperCase();
+  const symbolSearch=document.getElementById('searchBox').value.trim().toUpperCase();
   const allIntervals = symbolSearch.length>0;
   buildTable(symbolSearch.length>0 ? symbolSearch : null, allIntervals);
 });
