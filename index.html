@@ -118,6 +118,7 @@ async function fetchDailyPivot(symbol){
   return (H+L+C)/3;
 }
 
+// EMA, RSI, MACD, ATR functions همان توابع قبلی
 function ema(values,period){if(!values||values.length===0)return[];const k=2/(period+1);const out=[];let prev=values[0];out.push(prev);for(let i=1;i<values.length;i++){const v=values[i]*k+prev*(1-k);out.push(v);prev=v;}return out;}
 function rsi(values,period=14){if(!values||values.length<period+1)return[];let gains=0,losses=0;for(let i=1;i<=period;i++){const diff=values[i]-values[i-1];diff>=0?gains+=diff:losses-=diff;}let avgGain=gains/period,avgLoss=losses/period;const out=new Array(period).fill(null);for(let i=period+1;i<values.length;i++){const diff=values[i]-values[i-1];const gain=diff>0?diff:0;const loss=diff<0?-diff:0;avgGain=(avgGain*(period-1)+gain)/period;avgLoss=(avgLoss*(period-1)+loss)/period;const rs=avgLoss===0?1000:avgGain/avgLoss;out.push(100-(100/(1+rs)));}return out;}
 function macd(values,fast=12,slow=26,signalPeriod=9){const ef=ema(values,fast);const es=ema(values,slow);const macdLine=ef.map((v,i)=>(es[i]==null?null:(v-es[i])));const start=slow;const macdValid=macdLine.slice(start).filter(v=>v!=null);const signalPart=ema(macdValid,signalPeriod);const signalLine=new Array(start).fill(null).concat(signalPart);return {macdLine,signalLine};}
@@ -128,11 +129,11 @@ function setLoading(state){document.getElementById('refreshBtn').disabled=state;
 async function buildTable(){
   const tbody=document.querySelector("#crypto-table tbody");
   tbody.innerHTML="";
-  const selectedInterval=document.getElementById("interval").value;
-  const searchQuery=document.getElementById("searchBox").value.trim().toUpperCase();
   setLoading(true);
+  const searchQuery=document.getElementById("searchBox").value.trim().toUpperCase();
+  const selectedInterval=document.getElementById("interval").value;
 
-  // فقط نمادهای مربوطه پردازش شوند
+  // فقط نمادهای مرتبط را پردازش می‌کنیم
   const symbolsToProcess = searchQuery ? SYMBOLS.filter(s=>s.includes(searchQuery)) : SYMBOLS;
   const intervalsToProcess = searchQuery ? INTERVALS : [selectedInterval];
 
@@ -146,14 +147,11 @@ async function buildTable(){
         const {macdLine,signalLine}=macd(closes,12,26,9);
         const macdv=macdLine.at(-1),sigv=signalLine.at(-1);
         const atrv=atr(highs,lows,closes,14).at(-1);
-
         const longCond=last>ema20v && macdv!=null && sigv!=null && macdv>sigv && rsiv>50;
         const shortCond=last<ema20v && macdv!=null && sigv!=null && macdv<sigv && rsiv<50;
-
         let entry="-",exitPlan="-";
         if(longCond && atrv){entry=last.toFixed(4); exitPlan=`TP:${(last+1.5*atrv).toFixed(4)} | SL:${(last-1*atrv).toFixed(4)}`;}
         else if(shortCond && atrv){entry=last.toFixed(4); exitPlan=`TP:${(last-1.5*atrv).toFixed(4)} | SL:${(last+1*atrv).toFixed(4)}`;}
-
         const last20=closes.slice(-20);
         const support=Math.min(...last20),resistance=Math.max(...last20);
         const onSupport=withinPct(last,support,0.3)?"✅":"—";
