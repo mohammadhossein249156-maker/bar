@@ -164,4 +164,58 @@ async function buildTable(){
         const ema50Prev=ema(closes,50).slice(-2)[0],ema200Prev=ema(closes,200).slice(-2)[0];
         const golden=(ema50Prev!=null&&ema200Prev!=null&&ema50Prev<ema200Prev&&ema50v>ema200v)?"✅":"—";
         const rally=(last>ema9v && last>ema20v && rsiv>70 && macdv>sigv)?"✅":"—";
-        const macdClass=(macdv!=null && sigv!=null && (macdv-sigv)>=
+        const macdClass=(macdv!=null && sigv!=null && (macdv-sigv)>=0)?"positive":"negative";
+        const longBadge=longCond?'<span class="badge good">✅</span>':'<span class="badge neutral">—</span>';
+        const shortBadge=shortCond?'<span class="badge bad">⚠</span>':'<span class="badge neutral">—</span>';
+
+        const tr=document.createElement("tr");
+        tr.innerHTML=`
+<td class="nowrap">${symbol}</td>
+<td class="nowrap">${interval}</td>
+<td>${fmt(last,4)}</td>
+<td>${fmt(rsiv,2)}</td>
+<td>${fmt(ema9v,4)}</td>
+<td>${fmt(ema20v,4)}</td>
+<td>${fmt(ema50v,4)}</td>
+<td>${fmt(ema100v,4)}</td>
+<td class="${macdClass}">${fmt(macdv,6)}</td>
+<td class="${macdClass}">${fmt(sigv,6)}</td>
+<td>${longCond?"L":""}</td>
+<td>${shortCond?"S":""}</td>
+<td>${pp?fmt(pp,2):"-"}</td>
+<td>${longBadge}</td>
+<td>${shortBadge}</td>
+<td>${entry}</td>
+<td>${exitPlan}</td>
+<td>${fmt(support,4)}</td>
+<td>${fmt(resistance,4)}</td>
+<td>${onSupport}</td>
+<td>${onResistance}</td>
+<td>${breakout}</td>
+<td>${bounce}</td>
+<td>${golden}</td>
+<td>${rally}</td>`;
+        tbody.appendChild(tr);
+
+      }catch(err){
+        const tr=document.createElement("tr");
+        tr.innerHTML=`<td colspan="26" class="negative">خطا برای ${symbol} (${interval}): ${err.message}</td>`;
+        tbody.appendChild(tr);
+      }
+    }
+  }
+
+  document.getElementById("lastUpdate").textContent="آخرین بروزرسانی: "+new Date().toLocaleString();
+  setLoading(false);
+}
+
+// اتصالات UI
+document.getElementById('refreshBtn').addEventListener('click',buildTable);
+document.getElementById('interval').addEventListener('change',buildTable);
+document.getElementById('searchBox').addEventListener('input',buildTable);
+
+// شروع برنامه
+window.addEventListener('load',buildTable);
+</script>
+</body>
+</html>
