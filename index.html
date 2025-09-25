@@ -1,10 +1,9 @@
-
 <!DOCTYPE html>
 <html lang="fa">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>📊 Crypto Dashboard – Top 20 Multi-Timeframe</title>
+  <title>📊 Crypto Dashboard – Multi-Timeframe</title>
   <style>
     body{font-family:tahoma,Arial,sans-serif;direction:rtl;background:#f5f7fb;margin:0}
     header{background:#1e88e5;color:#fff;padding:14px 10px;text-align:center}
@@ -32,7 +31,7 @@
 </head>
 <body>
   <header>
-    <h2>📊 Crypto Dashboard – Top 20 Multi-Timeframe</h2>
+    <h2>📊 Crypto Dashboard – Multi-Timeframe</h2>
     <div style="font-size:12px;opacity:.9">منبع داده: Binance (OHLCV) از طریق Codetabs Proxy | اندیکاتورها در مرورگر محاسبه می‌شوند</div>
   </header>
 
@@ -99,98 +98,79 @@ const SYMBOLS = [
   "XLMUSDT","FILUSDT","APTUSDT","NEARUSDT","ARBUSDT"
 ];
 const INTERVALS = ["5m","15m","1h","4h","1d"];
-const PROXY = (url) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`;
-const fmt = (n, d=2) => (n==null || isNaN(n)) ? "-" : Number(n).toLocaleString(undefined,{maximumFractionDigits:d});
-const withinPct = (price, level, pct=0.3) => {
-  if (!price || !level) return false;
-  const diff = Math.abs((price - level)/level)*100;
-  return diff <= pct;
-};
+const PROXY = url=>`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`;
+const fmt = (n,d=2)=>(n==null||isNaN(n)?"-":Number(n).toLocaleString(undefined,{maximumFractionDigits:d}));
+const withinPct=(price,level,pct=0.3)=>{if(!price||!level)return false;const diff=Math.abs((price-level)/level)*100;return diff<=pct;};
 
-// ====== Data Fetch ======
-async function fetchKlines(symbol, interval="15m", limit=300){
-  const url = PROXY(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`);
-  const res = await fetch(url);
-  if(!res.ok) throw new Error(`HTTP ${res.status}`);
-  const data = await res.json();
-  if(!Array.isArray(data)) throw new Error("Bad payload");
+async function fetchKlines(symbol,interval="15m",limit=300){
+  const res=await fetch(PROXY(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`));
+  if(!res.ok)throw new Error(`HTTP ${res.status}`);
+  const data=await res.json();
+  if(!Array.isArray(data))throw new Error("Bad payload");
   return data;
 }
 
 async function fetchDailyPivot(symbol){
-  const url = PROXY(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1d&limit=3`);
-  const res = await fetch(url);
-  if(!res.ok) return null;
-  const data = await res.json();
-  if(!Array.isArray(data) || data.length < 2) return null;
-  const prev = data[data.length-2];
-  const H = +prev[2], L = +prev[3], C = +prev[4];
-  const PP = (H+L+C)/3;
-  return PP;
+  const res=await fetch(PROXY(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1d&limit=3`));
+  if(!res.ok)return null;
+  const data=await res.json();
+  if(!Array.isArray(data)||data.length<2)return null;
+  const prev=data[data.length-2],H=+prev[2],L=+prev[3],C=+prev[4];
+  return (H+L+C)/3;
 }
 
-// ====== Indicators ======
-function ema(values, period){if(!values||values.length===0)return[];const k=2/(period+1);const out=[];let prev=values[0];out.push(prev);for(let i=1;i<values.length;i++){const v=values[i]*k+prev*(1-k);out.push(v);prev=v;}return out;}
-function rsi(values, period=14){if(!values||values.length<period+1)return[];let gains=0,losses=0;for(let i=1;i<=period;i++){const diff=values[i]-values[i-1];diff>=0?gains+=diff:losses-=diff;}let avgGain=gains/period,avgLoss=losses/period;const out=new Array(period).fill(null);for(let i=period+1;i<values.length;i++){const diff=values[i]-values[i-1];const gain=diff>0?diff:0;const loss=diff<0?-diff:0;avgGain=(avgGain*(period-1)+gain)/period;avgLoss=(avgLoss*(period-1)+loss)/period;const rs=avgLoss===0?1000:avgGain/avgLoss;out.push(100-(100/(1+rs)));}return out;}
-function macd(values, fast=12, slow=26, signalPeriod=9){const ef=ema(values, fast);const es=ema(values, slow);const macdLine=ef.map((v,i)=>(es[i]==null?null:(v-es[i])));const start=slow;const macdValid=macdLine.slice(start).filter(v=>v!=null);const signalPart=ema(macdValid, signalPeriod);const signalLine=new Array(start).fill(null).concat(signalPart);return {macdLine, signalLine};}
+function ema(values,period){if(!values||values.length===0)return[];const k=2/(period+1);const out=[];let prev=values[0];out.push(prev);for(let i=1;i<values.length;i++){const v=values[i]*k+prev*(1-k);out.push(v);prev=v;}return out;}
+function rsi(values,period=14){if(!values||values.length<period+1)return[];let gains=0,losses=0;for(let i=1;i<=period;i++){const diff=values[i]-values[i-1];diff>=0?gains+=diff:losses-=diff;}let avgGain=gains/period,avgLoss=losses/period;const out=new Array(period).fill(null);for(let i=period+1;i<values.length;i++){const diff=values[i]-values[i-1];const gain=diff>0?diff:0;const loss=diff<0?-diff:0;avgGain=(avgGain*(period-1)+gain)/period;avgLoss=(avgLoss*(period-1)+loss)/period;const rs=avgLoss===0?1000:avgGain/avgLoss;out.push(100-(100/(1+rs)));}return out;}
+function macd(values,fast=12,slow=26,signalPeriod=9){const ef=ema(values,fast);const es=ema(values,slow);const macdLine=ef.map((v,i)=>(es[i]==null?null:(v-es[i])));const start=slow;const macdValid=macdLine.slice(start).filter(v=>v!=null);const signalPart=ema(macdValid,signalPeriod);const signalLine=new Array(start).fill(null).concat(signalPart);return {macdLine,signalLine};}
 function atr(highs,lows,closes,period=14){const trs=[];for(let i=0;i<highs.length;i++){if(i===0){trs.push(highs[i]-lows[i]);continue;}const hl=highs[i]-lows[i];const hc=Math.abs(highs[i]-closes[i-1]);const lc=Math.abs(lows[i]-closes[i-1]);trs.push(Math.max(hl,hc,lc));}if(trs.length<period)return[];let rma=trs.slice(0,period).reduce((a,b)=>a+b,0)/period;const out=new Array(period-1).fill(null);out.push(rma);for(let i=period;i<trs.length;i++){rma=(rma*(period-1)+trs[i])/period;out.push(rma);}return out;}
 
-// ====== Helpers ======
-function attachSearch(){
-  const box = document.getElementById('searchBox');
-  box.addEventListener('input', buildTable);
-}
+function attachSearch(){document.getElementById('searchBox').addEventListener('input',buildTable);}
+function setLoading(state){const btn=document.getElementById('refreshBtn');btn.disabled=state;btn.textContent=state?'در حال بروزرسانی…':'بروزرسانی';}
 
-function setLoading(state){
-  const btn = document.getElementById('refreshBtn');
-  btn.disabled = state;
-  btn.textContent = state ? 'در حال بروزرسانی…' : 'بروزرسانی';
-}
-
-// ====== Main Build ======
 async function buildTable(){
-  const tbody = document.querySelector("#crypto-table tbody");
-  tbody.innerHTML = "";
-  const selectedInterval = document.getElementById("interval").value;
-  const searchQuery = document.getElementById("searchBox").value.trim().toUpperCase();
+  const tbody=document.querySelector("#crypto-table tbody");
+  tbody.innerHTML="";
+  const selectedInterval=document.getElementById("interval").value;
+  const searchQuery=document.getElementById("searchBox").value.trim().toUpperCase();
   setLoading(true);
 
   let symbolsToProcess = SYMBOLS.filter(s=>s.includes(searchQuery));
   if(symbolsToProcess.length===0 && searchQuery==="") symbolsToProcess = SYMBOLS;
 
   for(const symbol of symbolsToProcess){
-    // اگر کاربر جستجو کرد، همه تایم‌فریم‌ها را پردازش کن
     const intervals = searchQuery!=="" ? INTERVALS : [selectedInterval];
     for(const interval of intervals){
       try{
-        const [kl, pp] = await Promise.all([fetchKlines(symbol, interval, 300), fetchDailyPivot(symbol)]);
-        const closes = kl.map(k=>+k[4]), highs=kl.map(k=>+k[2]), lows=kl.map(k=>+k[3]), last=closes.at(-1);
-        const ema9v=ema(closes,9).at(-1), ema20v=ema(closes,20).at(-1), ema50v=ema(closes,50).at(-1), ema100v=ema(closes,100).at(-1), ema200v=ema(closes,200).at(-1);
+        const [kl,pp] = await Promise.all([fetchKlines(symbol,interval,300),fetchDailyPivot(symbol)]);
+        const closes=kl.map(k=>+k[4]),highs=kl.map(k=>+k[2]),lows=kl.map(k=>+k[3]),last=closes.at(-1);
+        const ema9v=ema(closes,9).at(-1),ema20v=ema(closes,20).at(-1),ema50v=ema(closes,50).at(-1),ema100v=ema(closes,100).at(-1),ema200v=ema(closes,200).at(-1);
         const rsiv=rsi(closes,14).at(-1);
         const {macdLine,signalLine}=macd(closes,12,26,9);
-        const macdv=macdLine.at(-1), sigv=signalLine.at(-1);
+        const macdv=macdLine.at(-1),sigv=signalLine.at(-1);
         const atrv=atr(highs,lows,closes,14).at(-1);
 
         const longCond=last>ema20v && macdv!=null && sigv!=null && macdv>sigv && rsiv>50;
         const shortCond=last<ema20v && macdv!=null && sigv!=null && macdv<sigv && rsiv<50;
 
-        let entry="-", exitPlan="-";
+        let entry="-",exitPlan="-";
         if(longCond && atrv){entry=last.toFixed(4); exitPlan=`TP:${(last+1.5*atrv).toFixed(4)} | SL:${(last-1*atrv).toFixed(4)}`;}
         else if(shortCond && atrv){entry=last.toFixed(4); exitPlan=`TP:${(last-1.5*atrv).toFixed(4)} | SL:${(last+1*atrv).toFixed(4)}`;}
 
         const last20=closes.slice(-20);
-        const support=Math.min(...last20), resistance=Math.max(...last20);
+        const support=Math.min(...last20),resistance=Math.max(...last20);
         const onSupport=withinPct(last,support,0.3)?"✅":"—";
         const onResistance=withinPct(last,resistance,0.3)?"✅":"—";
         const breakout=last>resistance*1.002?"✅":"—";
         const prevRsi=rsi(closes,14).slice(-2)[0];
         const bounce=withinPct(last,support,0.3)&&prevRsi!=null&&rsiv>prevRsi?"✅":"—";
-        const ema50Prev=ema(closes,50).slice(-2)[0], ema200Prev=ema(closes,200).slice(-2)[0];
-        const golden=(ema50Prev!=null && ema200Prev!=null && ema50Prev<ema200Prev && ema50v>ema200v)?"✅":"—";
+        const ema50Prev=ema(closes,50).slice(-2)[0],ema200Prev=ema(closes,200).slice(-2)[0];
+        const golden=(ema50Prev!=null&&ema200Prev!=null&&ema50Prev<ema200Prev&&ema50v>ema200v)?"✅":"—";
         const rally=(last>ema9v && last>ema20v && rsiv>70 && macdv>sigv)?"✅":"—";
         const macdClass=(macdv!=null && sigv!=null && (macdv-sigv)>=0)?"positive":"negative";
         const longBadge=longCond?'<span class="badge good">✅</span>':'<span class="badge neutral">—</span>';
         const shortBadge=shortCond?'<span class="badge bad">⚠</span>':'<span class="badge neutral">—</span>';
+
+        console.log(symbol, interval); // بررسی مقدار قبل از ساخت ردیف
 
         const tr=document.createElement("tr");
         tr.innerHTML=`
@@ -234,11 +214,10 @@ async function buildTable(){
   setLoading(false);
 }
 
-// ====== Wire UI ======
-document.getElementById('refreshBtn').addEventListener('click', buildTable);
-document.getElementById('interval').addEventListener('change', buildTable);
+document.getElementById('refreshBtn').addEventListener('click',buildTable);
+document.getElementById('interval').addEventListener('change',buildTable);
 attachSearch();
-window.addEventListener('load', buildTable);
+window.addEventListener('load',buildTable);
 </script>
 </body>
 </html>
