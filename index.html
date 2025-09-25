@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="fa">
 <head>
@@ -151,4 +152,93 @@ async function buildTable(){
   const tbody = document.querySelector("#crypto-table tbody");
   tbody.innerHTML = "";
   const selectedInterval = document.getElementById("interval").value;
- 
+  const searchQuery = document.getElementById("searchBox").value.trim().toUpperCase();
+  setLoading(true);
+
+  let symbolsToProcess = SYMBOLS.filter(s=>s.includes(searchQuery));
+  if(symbolsToProcess.length===0 && searchQuery==="") symbolsToProcess = SYMBOLS;
+
+  for(const symbol of symbolsToProcess){
+    // اگر کاربر جستجو کرد، همه تایم‌فریم‌ها را پردازش کن
+    const intervals = searchQuery!=="" ? INTERVALS : [selectedInterval];
+    for(const interval of intervals){
+      try{
+        const [kl, pp] = await Promise.all([fetchKlines(symbol, interval, 300), fetchDailyPivot(symbol)]);
+        const closes = kl.map(k=>+k[4]), highs=kl.map(k=>+k[2]), lows=kl.map(k=>+k[3]), last=closes.at(-1);
+        const ema9v=ema(closes,9).at(-1), ema20v=ema(closes,20).at(-1), ema50v=ema(closes,50).at(-1), ema100v=ema(closes,100).at(-1), ema200v=ema(closes,200).at(-1);
+        const rsiv=rsi(closes,14).at(-1);
+        const {macdLine,signalLine}=macd(closes,12,26,9);
+        const macdv=macdLine.at(-1), sigv=signalLine.at(-1);
+        const atrv=atr(highs,lows,closes,14).at(-1);
+
+        const longCond=last>ema20v && macdv!=null && sigv!=null && macdv>sigv && rsiv>50;
+        const shortCond=last<ema20v && macdv!=null && sigv!=null && macdv<sigv && rsiv<50;
+
+        let entry="-", exitPlan="-";
+        if(longCond && atrv){entry=last.toFixed(4); exitPlan=`TP:${(last+1.5*atrv).toFixed(4)} | SL:${(last-1*atrv).toFixed(4)}`;}
+        else if(shortCond && atrv){entry=last.toFixed(4); exitPlan=`TP:${(last-1.5*atrv).toFixed(4)} | SL:${(last+1*atrv).toFixed(4)}`;}
+
+        const last20=closes.slice(-20);
+        const support=Math.min(...last20), resistance=Math.max(...last20);
+        const onSupport=withinPct(last,support,0.3)?"✅":"—";
+        const onResistance=withinPct(last,resistance,0.3)?"✅":"—";
+        const breakout=last>resistance*1.002?"✅":"—";
+        const prevRsi=rsi(closes,14).slice(-2)[0];
+        const bounce=withinPct(last,support,0.3)&&prevRsi!=null&&rsiv>prevRsi?"✅":"—";
+        const ema50Prev=ema(closes,50).slice(-2)[0], ema200Prev=ema(closes,200).slice(-2)[0];
+        const golden=(ema50Prev!=null && ema200Prev!=null && ema50Prev<ema200Prev && ema50v>ema200v)?"✅":"—";
+        const rally=(last>ema9v && last>ema20v && rsiv>70 && macdv>sigv)?"✅":"—";
+        const macdClass=(macdv!=null && sigv!=null && (macdv-sigv)>=0)?"positive":"negative";
+        const longBadge=longCond?'<span class="badge good">✅</span>':'<span class="badge neutral">—</span>';
+        const shortBadge=shortCond?'<span class="badge bad">⚠</span>':'<span class="badge neutral">—</span>';
+
+        const tr=document.createElement("tr");
+        tr.innerHTML=`
+          <td class="nowrap">${symbol}</td>
+          <td>${interval}</td>
+          <td>${fmt(last,4)}</td>
+          <td>${fmt(rsiv,2)}</td>
+          <td>${fmt(ema9v,4)}</td>
+          <td>${fmt(ema20v,4)}</td>
+          <td>${fmt(ema50v,4)}</td>
+          <td>${fmt(ema100v,4)}</td>
+          <td class="${macdClass}">${fmt(macdv,6)}</td>
+          <td class="${macdClass}">${fmt(sigv,6)}</td>
+          <td>${longCond?"L":""}</td>
+          <td>${shortCond?"S":""}</td>
+          <td>${pp?fmt(pp,2):"-"}</td>
+          <td>${longBadge}</td>
+          <td>${shortBadge}</td>
+          <td>${entry}</td>
+          <td>${exitPlan}</td>
+          <td>${fmt(support,4)}</td>
+          <td>${fmt(resistance,4)}</td>
+          <td>${onSupport}</td>
+          <td>${onResistance}</td>
+          <td>${breakout}</td>
+          <td>${bounce}</td>
+          <td>${golden}</td>
+          <td>${rally}</td>
+        `;
+        tbody.appendChild(tr);
+
+      }catch(err){
+        const tr=document.createElement("tr");
+        tr.innerHTML=`<td colspan="25" class="negative">خطا برای ${symbol} (${interval}): ${err.message}</td>`;
+        tbody.appendChild(tr);
+      }
+    }
+  }
+
+  document.getElementById("lastUpdate").textContent="آخرین بروزرسانی: "+new Date().toLocaleString();
+  setLoading(false);
+}
+
+// ====== Wire UI ======
+document.getElementById('refreshBtn').addEventListener('click', buildTable);
+document.getElementById('interval').addEventListener('change', buildTable);
+attachSearch();
+window.addEventListener('load', buildTable);
+</script>
+</body>
+</html>
