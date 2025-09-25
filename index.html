@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>📊 Crypto Dashboard – Fixed</title>
+<title>📊 Crypto Dashboard – Fixed Search & Update</title>
 <style>
 body{font-family:tahoma,Arial,sans-serif;direction:rtl;background:#f5f7fb;margin:0}
 header{background:#1e88e5;color:#fff;padding:14px 10px;text-align:center}
@@ -30,7 +30,7 @@ tr:hover{background:#fafcff}
 </head>
 <body>
 <header>
-<h2>📊 Crypto Dashboard – Fixed</h2>
+<h2>📊 Crypto Dashboard – Fixed Search & Update</h2>
 <div style="font-size:12px;opacity:.9">منبع داده: Binance (OHLCV) از طریق Codetabs Proxy | اندیکاتورها در مرورگر محاسبه می‌شوند</div>
 </header>
 
@@ -70,13 +70,10 @@ const PROXY = url=>`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent
 const fmt=(n,d=2)=>(n==null||isNaN(n)?"-":Number(n).toLocaleString(undefined,{maximumFractionDigits:d}));
 const withinPct=(price,level,pct=0.3)=>{if(!price||!level)return false;return Math.abs((price-level)/level)*100<=pct;}
 
-// توابع EMA, RSI, MACD, ATR
 function ema(values,period){if(!values||values.length===0)return[];const k=2/(period+1);const out=[];let prev=values[0];out.push(prev);for(let i=1;i<values.length;i++){const v=values[i]*k+prev*(1-k);out.push(v);prev=v;}return out;}
 function rsi(values,period=14){if(!values||values.length<period+1)return[];let gains=0,losses=0;for(let i=1;i<=period;i++){const diff=values[i]-values[i-1];diff>=0?gains+=diff:losses-=diff;}let avgGain=gains/period,avgLoss=losses/period;const out=new Array(period).fill(null);for(let i=period+1;i<values.length;i++){const diff=values[i]-values[i-1];const gain=diff>0?diff:0;const loss=diff<0?-diff:0;avgGain=(avgGain*(period-1)+gain)/period;avgLoss=(avgLoss*(period-1)+loss)/period;const rs=avgLoss===0?1000:avgGain/avgLoss;out.push(100-(100/(1+rs)));}return out;}
 function macd(values,fast=12,slow=26,signalPeriod=9){const ef=ema(values,fast);const es=ema(values,slow);const macdLine=ef.map((v,i)=>(es[i]==null?null:(v-es[i])));const start=slow;const macdValid=macdLine.slice(start).filter(v=>v!=null);const signalPart=ema(macdValid,signalPeriod);const signalLine=new Array(start).fill(null).concat(signalPart);return {macdLine,signalLine};}
 function atr(highs,lows,closes,period=14){const trs=[];for(let i=0;i<highs.length;i++){if(i===0){trs.push(highs[i]-lows[i]);continue;}const hl=highs[i]-lows[i];const hc=Math.abs(highs[i]-closes[i-1]);const lc=Math.abs(lows[i]-closes[i-1]);trs.push(Math.max(hl,hc,lc));}if(trs.length<period)return[];let rma=trs.slice(0,period).reduce((a,b)=>a+b,0)/period;const out=new Array(period-1).fill(null);out.push(rma);for(let i=period;i<trs.length;i++){rma=(rma*(period-1)+trs[i])/period;out.push(rma);}return out;}
-
-function setLoading(state){document.getElementById('refreshBtn').disabled=state;document.getElementById('refreshBtn').textContent=state?'در حال بروزرسانی…':'بروزرسانی';}
 
 async function fetchKlines(symbol,interval="15m",limit=300){
   const res=await fetch(PROXY(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`));
@@ -95,10 +92,11 @@ async function fetchDailyPivot(symbol){
   return (H+L+C)/3;
 }
 
-// تابع اصلی ساخت جدول
+function setLoading(state){document.getElementById('refreshBtn').disabled=state;document.getElementById('refreshBtn').textContent=state?'در حال بروزرسانی…':'بروزرسانی';}
+
 async function buildTable(symbolFilter=null, allIntervals=false){
   const tbody=document.querySelector("#crypto-table tbody");
-  if(!symbolFilter) tbody.innerHTML=""; // پاک کردن جدول فقط در پردازش اصلی
+  if(symbolFilter) tbody.innerHTML=""; // پاک کردن جدول فقط برای جستجو
   setLoading(true);
 
   const selectedInterval=document.getElementById("interval").value;
@@ -180,8 +178,11 @@ async function buildTable(symbolFilter=null, allIntervals=false){
 // اتصالات UI
 document.getElementById('refreshBtn').addEventListener('click',()=>{
   const symbolSearch=document.getElementById('searchBox').value.trim().toUpperCase();
-  const allIntervals = symbolSearch.length>0;
-  buildTable(symbolSearch.length>0 ? symbolSearch : null, allIntervals);
+  if(symbolSearch){
+    buildTable(symbolSearch,true); // جستجوی سمبل → تمام تایم‌فریم‌ها
+  }else{
+    buildTable(); // پردازش اصلی → تایم‌فریم انتخابی
+  }
 });
 
 document.getElementById('interval').addEventListener('change',()=>buildTable());
