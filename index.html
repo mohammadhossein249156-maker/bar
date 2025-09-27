@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>📊 Crypto Dashboard – Colored Rows</title>
+<title>📊 Crypto Dashboard – Responsive</title>
 <style>
 body{font-family:tahoma,Arial,sans-serif;direction:rtl;background:#f5f7fb;margin:0}
 header{background:#1e88e5;color:#fff;padding:10px;text-align:center;font-size:13px}
@@ -20,17 +20,46 @@ th{background:#e3f2fd;color:#0d47a1;position:sticky;top:0;z-index:1}
 tr:hover{background:#fafcff}
 .correction-ok{background:#e8f5e9;color:#2e7d32;font-weight:600;border-radius:3px;padding:1px 3px}
 .correction-warning{background:#ffe0b2;color:#ef6c00;font-weight:600;border-radius:3px;padding:1px 3px}
-/* رنگ ردیف‌ها برای سمبل‌ها */
+/* رنگ ردیف‌ها */
 .row-color-0{background:#ffffff;}
 .row-color-1{background:#f0f8ff;}
 .row-color-2{background:#f5f5dc;}
 .row-color-3{background:#f0fff0;}
 .row-color-4{background:#fffaf0;}
+
+/* 📱 حالت موبایل (نمایش کارتی) */
+@media (max-width: 600px) {
+  table, thead, tbody, th, td, tr {
+    display: block;
+  }
+  thead { display: none; }
+  tr {
+    margin: 0 0 10px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    background: #fff;
+    padding: 6px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  }
+  td {
+    text-align: right;
+    padding: 4px 6px;
+    border: none;
+    display: flex;
+    justify-content: space-between;
+  }
+  td::before {
+    content: attr(data-label);
+    font-weight: bold;
+    margin-left: 6px;
+    color: #0d47a1;
+  }
+}
 </style>
 </head>
 <body>
 <header>
-<h2>📊 Crypto Dashboard – Colored Rows</h2>
+<h2>📊 Crypto Dashboard – Responsive</h2>
 <div style="font-size:10px;opacity:.9">منبع داده: Binance (OHLCV) | اندیکاتورها در مرورگر محاسبه می‌شوند</div>
 </header>
 
@@ -78,7 +107,7 @@ function rsi(values, period=14){if(!values||values.length<period+1)return[];let 
 function macd(values, fast=12, slow=26, signalPeriod=9){const ef=ema(values,fast); const es=ema(values,slow); const macdLine=ef.map((v,i)=>(es[i]==null?null:(v-es[i]))); const start=slow; const macdValid=macdLine.slice(start).filter(v=>v!=null); const signalPart=ema(macdValid,signalPeriod); return {macdLine, signalLine:new Array(start).fill(null).concat(signalPart)};}
 async function fetchKlines(symbol,interval="15m",limit=300){const res = await fetch(PROXY(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`));const data = await res.json();return Array.isArray(data)?data:[];}
 function decideStrategy({last, ema20v, ema50v, ema200v, rsiv, macdv, sigv}){if(last>ema20v && last>ema50v && ema50v>ema200v && macdv>sigv && rsiv>50) return "هولد"; if(last<ema20v && last<ema50v && ema50v<ema200v && macdv<sigv && rsiv<50) return "فروش"; return "نوسان‌گیری";}
-function correctionBadge({last, ema20v, ema50v, rsiv, macdv, sigv}){return (last<ema20v && last<ema50v && rsiv<50 && macdv<sigv)?'<span class="correction-warning">⚠️</span>':'<span class="correction-ok">✅</span>';}
+function correctionBadge({last, ema20v, ema50v, rsiv, macdv, sigv}){return (last<ema20v && last<ema50v && rsiv<50 && macdv<sigv)?'⚠️':'✅';}
 
 async function buildTable(symbolFilter=null){
     const tbody = document.querySelector("#crypto-table tbody");
@@ -87,6 +116,10 @@ async function buildTable(symbolFilter=null){
 
     const symbolsToProcess = symbolFilter ? SYMBOLS.filter(s=>s.includes(symbolFilter)) : SYMBOLS;
     const intervalsToProcess = symbolFilter ? INTERVALS : [document.getElementById("interval").value];
+
+    const headers = ["Symbol","Interval","Price","RSI","EMA9","EMA20","EMA50","EMA100","EMA200",
+     "MACD","Signal","Support","Resistance","OnSupport","OnResistance",
+     "Breakout","Bounce","Golden","Rally","Strategy","Correction"];
 
     for(let si=0; si<symbolsToProcess.length; si++){
         const symbol = symbolsToProcess[si];
@@ -128,16 +161,27 @@ async function buildTable(symbolFilter=null){
 
                 const tr = document.createElement("tr");
                 tr.className = rowColorClass;
-                tr.innerHTML = `
-<td>${symbol}</td><td>${interval}</td><td>${fmt(last,4)}</td><td>${fmt(rsiv,2)}</td><td>${fmt(ema9v,4)}</td><td>${fmt(ema20v,4)}</td>
-<td>${fmt(ema50v,4)}</td><td>${fmt(ema100v,4)}</td><td>${fmt(ema200v,4)}</td><td>${fmt(macdv,6)}</td><td>${fmt(sigv,6)}</td>
-<td>${fmt(support,4)}</td><td>${fmt(resistance,4)}</td><td>${onSupport}</td><td>${onResistance}</td>
-<td>${breakout}</td><td>${bounce}</td><td>${golden}</td><td>${rally}</td><td>${strategy}</td><td>${correction}</td>`;
+                const cells = [
+                  symbol, interval, fmt(last,4), fmt(rsiv,2), fmt(ema9v,4), fmt(ema20v,4),
+                  fmt(ema50v,4), fmt(ema100v,4), fmt(ema200v,4), fmt(macdv,6), fmt(sigv,6),
+                  fmt(support,4), fmt(resistance,4), onSupport, onResistance,
+                  breakout, bounce, golden, rally, strategy, correction
+                ];
+                cells.forEach((val,i)=>{
+                  const td = document.createElement("td");
+                  td.textContent = val;
+                  td.setAttribute("data-label", headers[i]);
+                  tr.appendChild(td);
+                });
                 tbody.appendChild(tr);
             }catch(err){
                 const tr = document.createElement("tr");
                 tr.className = `row-color-${si%5}`;
-                tr.innerHTML = `<td colspan="21" style="color:red">خطا برای ${symbol} (${interval}): ${err.message}</td>`;
+                const td = document.createElement("td");
+                td.colSpan = headers.length;
+                td.style.color="red";
+                td.textContent = `خطا برای ${symbol} (${interval}): ${err.message}`;
+                tr.appendChild(td);
                 tbody.appendChild(tr);
             }
         }
