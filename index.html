@@ -15,7 +15,13 @@ button:disabled{background:#90caf9;cursor:not-allowed}
 table{border-collapse:collapse;width:100%;font-size:11px}
 th,td{border:1px solid #ddd;padding:3px 5px;text-align:center;white-space:nowrap}
 th{position:sticky;top:0;z-index:2;color:#fff;}
-td:first-child, th:first-child{position:sticky;left:0;background:#fdfdfd;font-weight:bold;z-index:3}
+td:first-child, th:first-child{
+    position: sticky;
+    left: 0;
+    background: #fdfdfd;
+    font-weight: bold;
+    z-index:3;
+}
 
 /* رنگ‌بندی ردیف‌ها کاملاً متمایز */
 tr.row-0{background:#fef9f7;}
@@ -41,6 +47,10 @@ thead th{background:#1976d2}
   table{font-size:9px;}
   th,td{padding:1px 2px;}
 }
+
+/* رنگ MACD و Signal */
+td.macd-positive{color:green;}
+td.macd-negative{color:red;}
 </style>
 </head>
 <body>
@@ -93,7 +103,7 @@ function macd(values, fast=12, slow=26, signalPeriod=9){const ef=ema(values,fast
 
 async function fetchKlines(symbol, interval="15m", limit=300) {
     const res = await fetch(PROXY(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`));
-    const data = await res.json();  // فقط یک بار خواندن
+    const data = await res.json();  
     return Array.isArray(data) ? data : [];
 }
 
@@ -124,7 +134,7 @@ const {macdLine, signalLine}=macd(closes,12,26,9);const macdv=macdLine.at(-1)||0
 
 const strategy=decideStrategy({last, ema20v, ema50v, ema200v, rsiv, macdv, sigv});
 const correction=correctionBadge({last, ema20v, ema50v, rsiv, macdv, sigv});
-const last20=closes.slice(-20);const support=Math.min(...last20);const resistance=Math.max(...last20);
+const last20=closes.slice(-20);const support=Math.min(...last20);const resistance=Math.max(...last20); 
 const onSupport=withinPct(last,support,0.3)?"✅":"—";const onResistance=withinPct(last,resistance,0.3)?"✅":"—";
 const breakout=last>resistance*1.002?"✅":"—";const prevRsi=rsi(closes,14).slice(-2)[0]||0;
 const bounce=withinPct(last,support,0.3)&&rsiv>prevRsi?"✅":"—";
@@ -137,7 +147,17 @@ const cells=[symbol, interval, fmt(last,4), fmt(rsiv,2), fmt(ema9v,4), fmt(ema20
 fmt(ema100v,4), fmt(ema200v,4), fmt(macdv,6), fmt(sigv,6),
 fmt(support,4), fmt(resistance,4), onSupport, onResistance, breakout, bounce, golden, rally, strategy, correction];
 
-cells.forEach(val=>{const td=document.createElement("td");td.textContent=val;tr.appendChild(td);});
+cells.forEach((val, idx)=>{ 
+    const td=document.createElement("td"); 
+    td.textContent=val; 
+
+    // رنگ MACD و Signal
+    if(idx===9 || idx===10){ 
+        td.className = macdv>=sigv ? "macd-positive" : "macd-negative"; 
+    }
+
+    tr.appendChild(td); 
+});
 tbody.appendChild(tr);
 }catch(err){const tr=document.createElement("tr");tr.innerHTML=`<td colspan="21" style="color:red">خطا برای ${symbol} (${interval}): ${err.message}</td>`;tbody.appendChild(tr);}
 }}
