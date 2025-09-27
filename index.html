@@ -3,29 +3,29 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>📊 Crypto Dashboard – Compact</title>
+<title>📊 Crypto Dashboard – Compact Full</title>
 <style>
 body{font-family:tahoma,Arial,sans-serif;direction:rtl;background:#f5f7fb;margin:0}
-header{background:#1e88e5;color:#fff;padding:12px;text-align:center}
-.wrap{max-width:1500px;margin:16px auto;padding:0 8px}
-.controls{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
-input,select,button{padding:6px 8px;border:1px solid #cfd8dc;border-radius:6px;font-family:inherit;font-size:12px}
+header{background:#1e88e5;color:#fff;padding:10px;text-align:center;font-size:13px}
+.wrap{max-width:1600px;margin:12px auto;padding:0 6px}
+.controls{display:flex;gap:5px;align-items:center;flex-wrap:wrap;margin-bottom:6px;font-size:12px}
+input,select,button{padding:4px 6px;border:1px solid #cfd8dc;border-radius:4px;font-family:inherit;font-size:11px}
 button{background:#1e88e5;color:#fff;cursor:pointer}
 button:disabled{background:#90caf9;cursor:not-allowed}
-.note{font-size:11px;color:#546e7a;margin-top:4px}
-.table-wrap{overflow:auto;background:#fff;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.08)}
-table{border-collapse:collapse;width:100%;font-size:12px}
-th,td{border-bottom:1px solid #eee;padding:4px 6px;text-align:center;white-space:nowrap}
+.note{font-size:10px;color:#546e7a;margin-top:3px}
+.table-wrap{overflow:auto;background:#fff;border-radius:6px;box-shadow:0 2px 6px rgba(0,0,0,.08)}
+table{border-collapse:collapse;width:100%;font-size:11px}
+th,td{border-bottom:1px solid #eee;padding:2px 4px;text-align:center;white-space:nowrap}
 th{background:#e3f2fd;color:#0d47a1;position:sticky;top:0;z-index:1}
 tr:hover{background:#fafcff}
-.correction-ok{background:#e8f5e9;color:#2e7d32;font-weight:600;border-radius:4px;padding:2px 4px}
-.correction-warning{background:#ffe0b2;color:#ef6c00;font-weight:600;border-radius:4px;padding:2px 4px}
+.correction-ok{background:#e8f5e9;color:#2e7d32;font-weight:600;border-radius:3px;padding:1px 3px}
+.correction-warning{background:#ffe0b2;color:#ef6c00;font-weight:600;border-radius:3px;padding:1px 3px}
 </style>
 </head>
 <body>
 <header>
-<h2>📊 Crypto Dashboard – Compact</h2>
-<div style="font-size:11px;opacity:.9">منبع داده: Binance (OHLCV) | اندیکاتورها در مرورگر محاسبه می‌شوند</div>
+<h2>📊 Crypto Dashboard – Compact Full</h2>
+<div style="font-size:10px;opacity:.9">منبع داده: Binance (OHLCV) | اندیکاتورها در مرورگر محاسبه می‌شوند</div>
 </header>
 
 <div class="wrap">
@@ -56,7 +56,7 @@ tr:hover{background:#fafcff}
 <tbody></tbody>
 </table>
 </div>
-<div class="note">نکته: این ابزار صرفاً آموزشی است و سیگنال قطعی معامله محسوب نمی‌شود.</div>
+<div class="note">این ابزار صرفاً آموزشی است و سیگنال قطعی معامله محسوب نمی‌شود.</div>
 </div>
 
 <script>
@@ -67,32 +67,13 @@ const PROXY = url => `https://api.codetabs.com/v1/proxy?quest=${encodeURICompone
 const fmt = (n,d=2) => (n==null||isNaN(n)?"-":Number(n).toLocaleString(undefined,{maximumFractionDigits:d}));
 const withinPct = (price, level, pct=0.3) => price && level ? Math.abs((price-level)/level)*100<=pct : false;
 
-// 🔹 محاسبات اندیکاتور
 function ema(values, period){ if(!values||values.length===0) return []; const k=2/(period+1); const out=[]; let prev=values[0]; out.push(prev); for(let i=1;i<values.length;i++){const v=values[i]*k+prev*(1-k);out.push(v); prev=v;} return out;}
 function rsi(values, period=14){if(!values||values.length<period+1)return[];let gains=0,losses=0;for(let i=1;i<=period;i++){const diff=values[i]-values[i-1];diff>=0?gains+=diff:losses-=diff;}let avgGain=gains/period,avgLoss=losses/period;const out=new Array(period).fill(null);for(let i=period+1;i<values.length;i++){const diff=values[i]-values[i-1];const gain=diff>0?diff:0;const loss=diff<0?-diff:0;avgGain=(avgGain*(period-1)+gain)/period;avgLoss=(avgLoss*(period-1)+loss)/period;const rs=avgLoss===0?1000:avgGain/avgLoss;out.push(100-(100/(1+rs)));}return out;}
 function macd(values, fast=12, slow=26, signalPeriod=9){const ef=ema(values,fast); const es=ema(values,slow); const macdLine=ef.map((v,i)=>(es[i]==null?null:(v-es[i]))); const start=slow; const macdValid=macdLine.slice(start).filter(v=>v!=null); const signalPart=ema(macdValid,signalPeriod); return {macdLine, signalLine:new Array(start).fill(null).concat(signalPart)};}
+async function fetchKlines(symbol,interval="15m",limit=300){const res = await fetch(PROXY(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`));const data = await res.json();return Array.isArray(data)?data:[];}
+function decideStrategy({last, ema20v, ema50v, ema200v, rsiv, macdv, sigv}){if(last>ema20v && last>ema50v && ema50v>ema200v && macdv>sigv && rsiv>50) return "هولد"; if(last<ema20v && last<ema50v && ema50v<ema200v && macdv<sigv && rsiv<50) return "فروش"; return "نوسان‌گیری";}
+function correctionBadge({last, ema20v, ema50v, rsiv, macdv, sigv}){return (last<ema20v && last<ema50v && rsiv<50 && macdv<sigv)?'<span class="correction-warning">⚠️</span>':'<span class="correction-ok">✅</span>';}
 
-// 🔹 fetch داده‌ها
-async function fetchKlines(symbol,interval="15m",limit=300){
-    const res = await fetch(PROXY(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`));
-    const data = await res.json();
-    return Array.isArray(data)?data:[];
-}
-
-// 🔹 تصمیم‌گیری استراتژی
-function decideStrategy({last, ema20v, ema50v, ema200v, rsiv, macdv, sigv}) {
-    if(last>ema20v && last>ema50v && ema50v>ema200v && macdv>sigv && rsiv>50) return "هولد";
-    if(last<ema20v && last<ema50v && ema50v<ema200v && macdv<sigv && rsiv<50) return "فروش";
-    return "نوسان‌گیری";
-}
-
-// 🔹 اصلاح کوتاه‌مدت
-function correctionBadge({last, ema20v, ema50v, rsiv, macdv, sigv}){
-    if(last<ema20v && last<ema50v && rsiv<50 && macdv<sigv) return '<span class="correction-warning">⚠️</span>';
-    return '<span class="correction-ok">✅</span>';
-}
-
-// 🔹 بارگذاری جدول
 async function buildTable(symbolFilter=null){
     const tbody = document.querySelector("#crypto-table tbody");
     tbody.innerHTML="";
@@ -138,42 +119,23 @@ async function buildTable(symbolFilter=null){
 
                 const tr = document.createElement("tr");
                 tr.innerHTML = `
-<td>${symbol}</td>
-<td>${interval}</td>
-<td>${fmt(last,4)}</td>
-<td>${fmt(rsiv,2)}</td>
-<td>${fmt(ema9v,4)}</td>
-<td>${fmt(ema20v,4)}</td>
-<td>${fmt(ema50v,4)}</td>
-<td>${fmt(ema100v,4)}</td>
-<td>${fmt(ema200v,4)}</td>
-<td>${fmt(macdv,6)}</td>
-<td>${fmt(sigv,6)}</td>
-<td>${fmt(support,4)}</td>
-<td>${fmt(resistance,4)}</td>
-<td>${onSupport}</td>
-<td>${onResistance}</td>
-<td>${breakout}</td>
-<td>${bounce}</td>
-<td>${golden}</td>
-<td>${rally}</td>
-<td>${strategy}</td>
-<td>${correction}</td>
-                `;
+<td>${symbol}</td><td>${interval}</td><td>${fmt(last,4)}</td><td>${fmt(rsiv,2)}</td><td>${fmt(ema9v,4)}</td><td>${fmt(ema20v,4)}</td>
+<td>${fmt(ema50v,4)}</td><td>${fmt(ema100v,4)}</td><td>${fmt(ema200v,4)}</td><td>${fmt(macdv,6)}</td><td>${fmt(sigv,6)}</td>
+<td>${fmt(support,4)}</td><td>${fmt(resistance,4)}</td><td>${onSupport}</td><td>${onResistance}</td>
+<td>${breakout}</td><td>${bounce}</td><td>${golden}</td><td>${rally}</td><td>${strategy}</td><td>${correction}</td>`;
                 tbody.appendChild(tr);
             }catch(err){
                 const tr = document.createElement("tr");
-                tr.innerHTML = `<td colspan="21" class="negative">خطا برای ${symbol} (${interval}): ${err.message}</td>`;
+                tr.innerHTML = `<td colspan="21" style="color:red">خطا برای ${symbol} (${interval}): ${err.message}</td>`;
                 tbody.appendChild(tr);
             }
         }
     }
-
-    document.getElementById("lastUpdate").textContent = "آخرین بروزرسانی: " + new Date().toLocaleString();
+    document.getElementById("lastUpdate").textContent = "آخرین بروزرسانی: "+new Date().toLocaleString();
     document.getElementById("refreshBtn").disabled=false;
 }
 
-// 🔹 ذخیره در فایل txt
+// ذخیره در txt
 function saveTableToTxt(){
     const table = document.getElementById("crypto-table");
     let txt = "";
@@ -189,12 +151,10 @@ function saveTableToTxt(){
     URL.revokeObjectURL(url);
 }
 
-// 🔹 Event Listeners
 document.getElementById("refreshBtn").addEventListener("click",()=>buildTable());
-document.getElementById("searchBox").addEventListener("change",(e)=>buildTable(e.target.value.toUpperCase()));
+document.getElementById("searchBox").addEventListener("change",e=>buildTable(e.target.value.toUpperCase()));
 document.getElementById("saveBtn").addEventListener("click",saveTableToTxt);
 
-// بارگذاری اولیه
 buildTable();
 </script>
 </body>
