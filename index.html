@@ -1,200 +1,164 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fa">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Crypto Dashboard</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f9f9f9;
-      margin: 0;
-      padding: 0;
-    }
-    header {
-      background: #0d47a1;
-      color: white;
-      padding: 10px;
-      text-align: center;
-    }
-    .controls {
-      margin: 10px;
-      text-align: center;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      background: white;
-      font-size: 13px;
-    }
-    th, td {
-      border: 1px solid #ddd;
-      padding: 5px;
-      text-align: center;
-      white-space: nowrap;
-    }
-    th {
-      background: #1976d2;
-      color: white;
-      position: sticky;
-      top: 0;
-      z-index: 1;
-    }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>📊 Crypto Dashboard – Responsive</title>
+<style>
+body{font-family:Tahoma,Arial,sans-serif;direction:rtl;background:#f5f7fb;margin:0}
+header{background:#1e88e5;color:#fff;padding:10px;text-align:center;font-size:13px}
+.controls{display:flex;gap:5px;align-items:center;flex-wrap:wrap;margin:10px;font-size:12px}
+input,select,button{padding:4px 6px;border:1px solid #cfd8dc;border-radius:4px;font-family:inherit;font-size:11px}
+button{background:#1e88e5;color:#fff;cursor:pointer}
+button:disabled{background:#90caf9;cursor:not-allowed}
+.table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;background:#fff;border-radius:6px;box-shadow:0 2px 6px rgba(0,0,0,.08)}
+table{border-collapse:collapse;width:100%;font-size:11px}
+th,td{border:1px solid #ddd;padding:3px 5px;text-align:center;white-space:nowrap}
+th{background:#1976d2;color:#fff;position:sticky;top:0;z-index:1}
+tr:nth-child(odd){background:#f1f5f9;}
+tr:nth-child(even){background:#e0f2fe;}
+tr:hover{background:#cbd5e1;}
+td:first-child, th:first-child{position:sticky;left:0;background:#fdfdfd;z-index:2;font-weight:bold}
 
-    /* ✅ رنگ‌بندی واضح‌تر سطرها */
-    tr:nth-child(odd) { background-color: #f1f5f9; }
-    tr:nth-child(even) { background-color: #e0f2fe; }
-    tr:hover { background-color: #cbd5e1; }
-
-    /* ✅ اسکرول افقی نرم */
-    .table-wrap {
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
-    }
-
-    /* ✅ ستون اول ثابت */
-    td:first-child, th:first-child {
-      position: sticky;
-      left: 0;
-      background: #fdfdfd;
-      z-index: 2;
-      font-weight: bold;
-    }
-
-    /* ✅ کوچک‌سازی در موبایل */
-    @media (max-width: 768px) {
-      table { font-size: 11px; }
-      th, td { padding: 3px 4px; }
-    }
-    @media (max-width: 480px) {
-      table { font-size: 9px; }
-      th, td { padding: 2px 3px; }
-    }
-  </style>
+/* موبایل */
+@media(max-width:768px){table{font-size:10px}th,td{padding:2px 3px}}
+@media(max-width:480px){table{font-size:9px}th,td{padding:1px 2px}}
+</style>
 </head>
 <body>
-  <header>
-    <h2>Crypto Dashboard</h2>
-  </header>
-  <div class="controls">
-    <label for="interval">Interval:</label>
-    <select id="interval">
-      <option value="5m">5m</option>
-      <option value="15m">15m</option>
-      <option value="1h">1h</option>
-      <option value="4h">4h</option>
-      <option value="1d">1d</option>
-    </select>
-    <input type="text" id="search" placeholder="Search symbol...">
-    <button onclick="refreshData()">Refresh</button>
-    <button onclick="downloadTXT()">Download TXT</button>
-  </div>
-  <div class="table-wrap">
-    <table id="cryptoTable">
-      <thead>
-        <tr>
-          <th>Symbol</th><th>Interval</th><th>Price</th><th>RSI</th><th>EMA9</th><th>EMA20</th>
-          <th>EMA50</th><th>EMA100</th><th>EMA200</th><th>MACD</th><th>Signal</th>
-          <th>Support</th><th>Resistance</th><th>OnSupport</th><th>OnResistance</th>
-          <th>Breakout</th><th>Bounce</th><th>Golden</th><th>Rally</th><th>Strategy</th><th>Correction</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-  </div>
-  <script>
-    const symbols = ["BTCUSDT","ETHUSDT","BNBUSDT","SOLUSDT","XRPUSDT","ADAUSDT","DOGEUSDT","AVAXUSDT","TRXUSDT","MATICUSDT"];
-    const tableBody = document.querySelector("#cryptoTable tbody");
+<header>
+<h2>📊 Crypto Dashboard – Responsive</h2>
+<div style="font-size:10px;opacity:.9">منبع داده: Binance (OHLCV) | اندیکاتورها در مرورگر محاسبه می‌شوند</div>
+</header>
 
-    function fmt(num, dec=2){ return Number(num).toFixed(dec); }
+<div class="controls">
+<label>تایم‌فریم:</label>
+<select id="interval">
+<option value="5m">5m</option>
+<option value="15m" selected>15m</option>
+<option value="1h">1h</option>
+<option value="4h">4h</option>
+<option value="1d">1d</option>
+</select>
+<button id="refreshBtn">بروزرسانی</button>
+<input type="text" id="searchBox" placeholder="Search Symbol..." />
+<button id="saveBtn">📥 ذخیره در نوت‌پد</button>
+<span id="lastUpdate" style="font-size:10px;color:#546e7a;margin-left:5px;"></span>
+</div>
 
-    async function fetchKlines(symbol, interval, limit=200){
-      const url = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`;
-      const res = await fetch(url);
-      return await res.json();
+<div class="table-wrap">
+<table id="crypto-table">
+<thead>
+<tr>
+<th>Symbol</th><th>Interval</th><th>Price</th><th>RSI</th><th>EMA9</th><th>EMA20</th><th>EMA50</th>
+<th>EMA100</th><th>EMA200</th><th>MACD</th><th>Signal</th><th>Support</th><th>Resistance</th>
+<th>OnSupport</th><th>OnResistance</th><th>Breakout</th><th>Bounce</th><th>Golden</th><th>Rally</th>
+<th>Strategy</th><th>Correction</th>
+</tr>
+</thead>
+<tbody></tbody>
+</table>
+</div>
+
+<script>
+// لیست سمبل‌ها
+const SYMBOLS = ["BTCUSDT","ETHUSDT","BNBUSDT","XRPUSDT","SOLUSDT","ADAUSDT","DOGEUSDT","TRXUSDT","MATICUSDT","DOTUSDT"];
+const INTERVALS = ["5m","15m","1h","4h","1d"];
+
+// پروکسی برای حل CORS
+const PROXY = url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`;
+
+// توابع کمکی
+const fmt = (n,d=2)=>(n==null||isNaN(n)?"-":Number(n).toLocaleString(undefined,{maximumFractionDigits:d}));
+const withinPct = (price, level, pct=0.3)=>price && level ? Math.abs((price-level)/level)*100<=pct : false;
+
+function ema(values, period){if(!values||values.length===0) return []; const k=2/(period+1); const out=[]; let prev=values[0]; out.push(prev); for(let i=1;i<values.length;i++){const v=values[i]*k+prev*(1-k); out.push(v); prev=v;} return out;}
+function rsi(values, period=14){if(!values||values.length<period+1)return[];let gains=0,losses=0;for(let i=1;i<=period;i++){const diff=values[i]-values[i-1];diff>=0?gains+=diff:losses-=diff;}let avgGain=gains/period,avgLoss=losses/period;const out=new Array(period).fill(null);for(let i=period+1;i<values.length;i++){const diff=values[i]-values[i-1];const gain=diff>0?diff:0;const loss=diff<0?-diff:0;avgGain=(avgGain*(period-1)+gain)/period; avgLoss=(avgLoss*(period-1)+loss)/period;const rs=avgLoss===0?1000:avgGain/avgLoss;out.push(100-(100/(1+rs)));}return out;}
+function macd(values, fast=12, slow=26, signalPeriod=9){const ef=ema(values,fast); const es=ema(values,slow); const macdLine=ef.map((v,i)=>(es[i]==null?null:(v-es[i]))); const start=slow; const macdValid=macdLine.slice(start).filter(v=>v!=null); const signalPart=ema(macdValid,signalPeriod); return {macdLine, signalLine:new Array(start).fill(null).concat(signalPart)};}
+async function fetchKlines(symbol,interval="15m",limit=300){const res = await fetch(PROXY(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`));const data = await res.json();return Array.isArray(data)?data:[];}
+function decideStrategy({last, ema20v, ema50v, ema200v, rsiv, macdv, sigv}){if(last>ema20v && last>ema50v && ema50v>ema200v && macdv>sigv && rsiv>50) return "هولد"; if(last<ema20v && last<ema50v && ema50v<ema200v && macdv<sigv && rsiv<50) return "فروش"; return "نوسان‌گیری";}
+function correctionBadge({last, ema20v, ema50v, rsiv, macdv, sigv}){return (last<ema20v && last<ema50v && rsiv<50 && macdv<sigv)?'⚠️':'✅';}
+
+// ساخت جدول
+async function buildTable(symbolFilter=null){
+  const tbody = document.querySelector("#crypto-table tbody");
+  tbody.innerHTML="";
+  document.getElementById("refreshBtn").disabled=true;
+
+  const symbolsToProcess = symbolFilter ? SYMBOLS.filter(s=>s.includes(symbolFilter)) : SYMBOLS;
+  const interval = document.getElementById("interval").value;
+  const headers = ["Symbol","Interval","Price","RSI","EMA9","EMA20","EMA50","EMA100","EMA200","MACD","Signal","Support","Resistance","OnSupport","OnResistance","Breakout","Bounce","Golden","Rally","Strategy","Correction"];
+
+  for(let si=0; si<symbolsToProcess.length; si++){
+    const symbol = symbolsToProcess[si];
+    try{
+      const kl = await fetchKlines(symbol, interval, 300);
+      if(!kl.length) continue;
+      const closes = kl.map(k=>+k[4]);
+      const last = closes.at(-1)||0;
+      const ema9v = ema(closes,9).at(-1)||0;
+      const ema20v = ema(closes,20).at(-1)||0;
+      const ema50v = ema(closes,50).at(-1)||0;
+      const ema100v = ema(closes,100).at(-1)||0;
+      const ema200v = ema(closes,200).at(-1)||0;
+      const rsiv = rsi(closes,14).at(-1)||0;
+      const {macdLine, signalLine} = macd(closes,12,26,9);
+      const macdv = macdLine.at(-1)||0;
+      const sigv = signalLine.at(-1)||0;
+
+      const strategy = decideStrategy({last, ema20v, ema50v, ema200v, rsiv, macdv, sigv});
+      const correction = correctionBadge({last, ema20v, ema50v, rsiv, macdv, sigv});
+      const last20 = closes.slice(-20);
+      const support = Math.min(...last20);
+      const resistance = Math.max(...last20);
+      const onSupport = withinPct(last,support,0.3)?"✅":"—";
+      const onResistance = withinPct(last,resistance,0.3)?"✅":"—";
+      const breakout = last>resistance*1.002?"✅":"—";
+      const prevRsi = rsi(closes,14).slice(-2)[0]||0;
+      const bounce = withinPct(last,support,0.3) && rsiv>prevRsi?"✅":"—";
+      const ema50Prev = ema(closes,50).slice(-2)[0]||0;
+      const ema200Prev = ema(closes,200).slice(-2)[0]||0;
+      const golden = ema50Prev<ema200Prev && ema50v>ema200v?"✅":"—";
+      const rally = last>ema9v && last>ema20v && rsiv>70 && macdv>sigv?"✅":"—";
+
+      const tr = document.createElement("tr");
+      const cells = [symbol, interval, fmt(last,4), fmt(rsiv,2), fmt(ema9v,4), fmt(ema20v,4),
+        fmt(ema50v,4), fmt(ema100v,4), fmt(ema200v,4), fmt(macdv,6), fmt(sigv,6),
+        fmt(support,4), fmt(resistance,4), onSupport, onResistance, breakout, bounce, golden, rally, strategy, correction];
+      cells.forEach((val,i)=>{
+        const td = document.createElement("td");
+        td.textContent = val;
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    }catch(err){
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td colspan="21" style="color:red">خطا برای ${symbol}: ${err.message}</td>`;
+      tbody.appendChild(tr);
     }
+  }
+  document.getElementById("lastUpdate").textContent = "آخرین بروزرسانی: "+new Date().toLocaleString();
+  document.getElementById("refreshBtn").disabled=false;
+}
 
-    function EMA(data, period){
-      let k = 2/(period+1);
-      let emaArray = [];
-      emaArray[0] = data[0];
-      for(let i=1; i<data.length; i++){
-        emaArray[i] = data[i]*k + emaArray[i-1]*(1-k);
-      }
-      return emaArray;
-    }
+// ذخیره txt
+function saveTableToTxt(){
+  const table = document.getElementById("crypto-table");
+  let txt = Array.from(table.querySelectorAll("thead th")).map(th=>th.textContent.trim()).join("\t")+"\n";
+  table.querySelectorAll("tbody tr").forEach(row=>{
+    txt+=Array.from(row.querySelectorAll("td")).map(td=>td.textContent.trim()).join("\t")+"\n";
+  });
+  const blob = new Blob([txt],{type:"text/plain;charset=utf-8"});
+  const a = document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="crypto_data.txt"; a.click();
+  URL.revokeObjectURL(a.href);
+}
 
-    function RSI(closes, period=14){
-      let gains=0, losses=0;
-      for(let i=1;i<=period;i++){
-        let diff=closes[i]-closes[i-1];
-        if(diff>=0) gains+=diff; else losses-=diff;
-      }
-      let avgGain=gains/period, avgLoss=losses/period;
-      let rs=avgGain/avgLoss; let rsi=[100-100/(1+rs)];
-      for(let i=period+1;i<closes.length;i++){
-        let diff=closes[i]-closes[i-1];
-        if(diff>=0){ avgGain=(avgGain*(period-1)+diff)/period; avgLoss=(avgLoss*(period-1))/period; }
-        else { avgGain=(avgGain*(period-1))/period; avgLoss=(avgLoss*(period-1)-diff)/period; }
-        rs=avgGain/avgLoss; rsi.push(100-100/(1+rs));
-      }
-      return rsi;
-    }
+document.getElementById("refreshBtn").addEventListener("click",()=>buildTable());
+document.getElementById("searchBox").addEventListener("change",e=>buildTable(e.target.value.toUpperCase()));
+document.getElementById("saveBtn").addEventListener("click",saveTableToTxt);
 
-    function MACD(closes, fast=12, slow=26, signal=9){
-      let emaFast=EMA(closes, fast), emaSlow=EMA(closes, slow);
-      let macd=emaFast.map((v,i)=>v-emaSlow[i]);
-      let signalLine=EMA(macd.slice(slow), signal);
-      let hist=macd.slice(slow+signal-1).map((v,i)=>v-signalLine[i]);
-      return {macd, signal:signalLine, hist};
-    }
-
-    async function refreshData(){
-      tableBody.innerHTML = "";
-      let interval = document.getElementById("interval").value;
-      let searchVal = document.getElementById("search").value.toUpperCase();
-      for(let symbol of symbols){
-        if(searchVal && !symbol.includes(searchVal)) continue;
-        try{
-          let klines = await fetchKlines(symbol, interval);
-          let closes = klines.map(k=>parseFloat(k[4]));
-          let last=closes[closes.length-1];
-          let ema9=EMA(closes,9), ema20=EMA(closes,20), ema50=EMA(closes,50), ema100=EMA(closes,100), ema200=EMA(closes,200);
-          let rsis=RSI(closes,14), rsiv=rsis[rsis.length-1];
-          let macdObj=MACD(closes); let macdv=macdObj.macd.at(-1), sigv=macdObj.signal.at(-1);
-          let recent=closes.slice(-20);
-          let support=Math.min(...recent), resistance=Math.max(...recent);
-          let onSupport=last<=support*1.01?"Yes":"";
-          let onResistance=last>=resistance*0.99?"Yes":"";
-          let breakout=last>resistance?"Yes":"";
-          let bounce=(onSupport&&rsiv>40)?"Yes":"";
-          let golden=(ema50.at(-1)>ema200.at(-1)&&ema50.at(-2)<=ema200.at(-2))?"Yes":"";
-          let rally=(rsiv>60 && last>ema50.at(-1)&&macdv>sigv)?"Yes":"";
-          let strategy= rally?"Hold": breakout?"Buy": onResistance?"Sell": onSupport?"Accumulate":"";
-          let correction= (rsiv>70)?"Overbought":(rsiv<30)?"Oversold":"OK";
-
-          const tr=document.createElement("tr");
-          const cells=[symbol, interval, fmt(last,4), fmt(rsiv,2), fmt(ema9.at(-1),4), fmt(ema20.at(-1),4),
-          fmt(ema50.at(-1),4), fmt(ema100.at(-1),4), fmt(ema200.at(-1),4), fmt(macdv,6), fmt(sigv,6),
-          fmt(support,4), fmt(resistance,4), onSupport, onResistance, breakout, bounce, golden, rally, strategy, correction];
-
-          cells.forEach(val=>{
-            const td=document.createElement("td");
-            td.textContent=val;
-            tr.appendChild(td);
-          });
-          tableBody.appendChild(tr);
-        }catch(e){console.log("Error",symbol,e);}
-      }
-    }
-
-    function downloadTXT(){
-      let rows=[...document.querySelectorAll("#cryptoTable tr")].map(r=>[...r.children].map(td=>td.innerText).join("\t"));
-      let blob=new Blob([rows.join("\n")],{type:"text/plain"});
-      let a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="crypto_dashboard.txt"; a.click();
-    }
-
-    refreshData();
-  </script>
+// اجرای اولیه
+buildTable();
+</script>
 </body>
 </html>
