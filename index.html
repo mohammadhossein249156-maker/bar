@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>📊 Crypto Dashboard – Compact Full</title>
+<title>📊 Crypto Dashboard – Colored Rows</title>
 <style>
 body{font-family:tahoma,Arial,sans-serif;direction:rtl;background:#f5f7fb;margin:0}
 header{background:#1e88e5;color:#fff;padding:10px;text-align:center;font-size:13px}
@@ -20,11 +20,17 @@ th{background:#e3f2fd;color:#0d47a1;position:sticky;top:0;z-index:1}
 tr:hover{background:#fafcff}
 .correction-ok{background:#e8f5e9;color:#2e7d32;font-weight:600;border-radius:3px;padding:1px 3px}
 .correction-warning{background:#ffe0b2;color:#ef6c00;font-weight:600;border-radius:3px;padding:1px 3px}
+/* رنگ ردیف‌ها برای سمبل‌ها */
+.row-color-0{background:#ffffff;}
+.row-color-1{background:#f0f8ff;}
+.row-color-2{background:#f5f5dc;}
+.row-color-3{background:#f0fff0;}
+.row-color-4{background:#fffaf0;}
 </style>
 </head>
 <body>
 <header>
-<h2>📊 Crypto Dashboard – Compact Full</h2>
+<h2>📊 Crypto Dashboard – Colored Rows</h2>
 <div style="font-size:10px;opacity:.9">منبع داده: Binance (OHLCV) | اندیکاتورها در مرورگر محاسبه می‌شوند</div>
 </header>
 
@@ -82,14 +88,14 @@ async function buildTable(symbolFilter=null){
     const symbolsToProcess = symbolFilter ? SYMBOLS.filter(s=>s.includes(symbolFilter)) : SYMBOLS;
     const intervalsToProcess = symbolFilter ? INTERVALS : [document.getElementById("interval").value];
 
-    for(const symbol of symbolsToProcess){
+    for(let si=0; si<symbolsToProcess.length; si++){
+        const symbol = symbolsToProcess[si];
+        const rowColorClass = `row-color-${si%5}`;
         for(const interval of intervalsToProcess){
             try{
                 const kl = await fetchKlines(symbol, interval, 300);
                 if(!kl.length) continue;
                 const closes = kl.map(k=>+k[4]);
-                const highs = kl.map(k=>+k[2]);
-                const lows = kl.map(k=>+k[3]);
                 const last = closes.at(-1)||0;
                 const ema9v = ema(closes,9).at(-1)||0;
                 const ema20v = ema(closes,20).at(-1)||0;
@@ -107,8 +113,11 @@ async function buildTable(symbolFilter=null){
                 const last20 = closes.slice(-20);
                 const support = Math.min(...last20);
                 const resistance = Math.max(...last20);
-                const onSupport = withinPct(last, support, 0.3)?"✅":"—";
-                const onResistance = withinPct(last, resistance,0.3)?"✅":"—";
+
+                let onSupport = "—", onResistance = "—";
+                if(withinPct(last, support,0.3)) onSupport = "✅";
+                else if(withinPct(last,resistance,0.3)) onResistance = "✅";
+
                 const breakout = last>resistance*1.002?"✅":"—";
                 const prevRsi = rsi(closes,14).slice(-2)[0]||0;
                 const bounce = withinPct(last,support,0.3) && rsiv>prevRsi?"✅":"—";
@@ -118,6 +127,7 @@ async function buildTable(symbolFilter=null){
                 const rally = last>ema9v && last>ema20v && rsiv>70 && macdv>sigv?"✅":"—";
 
                 const tr = document.createElement("tr");
+                tr.className = rowColorClass;
                 tr.innerHTML = `
 <td>${symbol}</td><td>${interval}</td><td>${fmt(last,4)}</td><td>${fmt(rsiv,2)}</td><td>${fmt(ema9v,4)}</td><td>${fmt(ema20v,4)}</td>
 <td>${fmt(ema50v,4)}</td><td>${fmt(ema100v,4)}</td><td>${fmt(ema200v,4)}</td><td>${fmt(macdv,6)}</td><td>${fmt(sigv,6)}</td>
@@ -126,6 +136,7 @@ async function buildTable(symbolFilter=null){
                 tbody.appendChild(tr);
             }catch(err){
                 const tr = document.createElement("tr");
+                tr.className = `row-color-${si%5}`;
                 tr.innerHTML = `<td colspan="21" style="color:red">خطا برای ${symbol} (${interval}): ${err.message}</td>`;
                 tbody.appendChild(tr);
             }
