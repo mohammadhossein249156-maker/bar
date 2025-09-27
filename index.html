@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>📊 Crypto Dashboard – Responsive</title>
+<title>📊 Crypto Dashboard – Mobile Optimized</title>
 <style>
 body{font-family:Tahoma,Arial,sans-serif;direction:rtl;background:#f5f7fb;margin:0}
 header{background:#1e88e5;color:#fff;padding:10px;text-align:center;font-size:13px}
@@ -14,20 +14,38 @@ button:disabled{background:#90caf9;cursor:not-allowed}
 .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;background:#fff;border-radius:6px;box-shadow:0 2px 6px rgba(0,0,0,.08)}
 table{border-collapse:collapse;width:100%;font-size:11px}
 th,td{border:1px solid #ddd;padding:3px 5px;text-align:center;white-space:nowrap}
-th{background:#1976d2;color:#fff;position:sticky;top:0;z-index:1}
-tr:nth-child(odd){background:#f1f5f9;}
-tr:nth-child(even){background:#e0f2fe;}
-tr:hover{background:#cbd5e1;}
-td:first-child, th:first-child{position:sticky;left:0;background:#fdfdfd;z-index:2;font-weight:bold}
+th{position:sticky;top:0;z-index:2;color:#fff;}
+td:first-child, th:first-child{position:sticky;left:0;background:#fdfdfd;font-weight:bold;z-index:3}
 
-/* موبایل */
-@media(max-width:768px){table{font-size:10px}th,td{padding:2px 3px}}
-@media(max-width:480px){table{font-size:9px}th,td{padding:1px 2px}}
+/* رنگ‌بندی ردیف‌ها کاملاً متمایز */
+tr.row-0{background:#fef9f7;}
+tr.row-1{background:#f7f7ff;}
+tr.row-2{background:#f7fff7;}
+tr.row-3{background:#fff7f7;}
+tr.row-4{background:#f7f7f7;}
+tr:hover{background:#cbd5e1;}
+
+/* رنگ سرستون‌ها */
+thead th{background:#1976d2}
+
+/* موبایل: مخفی کردن ستون غیرضروری */
+@media(max-width:768px){
+  table{font-size:10px;}
+  th:nth-child(8), td:nth-child(8),
+  th:nth-child(9), td:nth-child(9),
+  th:nth-child(10), td:nth-child(10),
+  th:nth-child(11), td:nth-child(11)
+  {display:none;}
+}
+@media(max-width:480px){
+  table{font-size:9px;}
+  th,td{padding:1px 2px;}
+}
 </style>
 </head>
 <body>
 <header>
-<h2>📊 Crypto Dashboard – Responsive</h2>
+<h2>📊 Crypto Dashboard – Mobile Optimized</h2>
 <div style="font-size:10px;opacity:.9">منبع داده: Binance (OHLCV) | اندیکاتورها در مرورگر محاسبه می‌شوند</div>
 </header>
 
@@ -61,105 +79,68 @@ td:first-child, th:first-child{position:sticky;left:0;background:#fdfdfd;z-index
 </div>
 
 <script>
-// آرایه کامل ۲۰ سمبل
+// آرایه کامل سمبل‌ها
 const SYMBOLS = ["BTCUSDT","ETHUSDT","BNBUSDT","XRPUSDT","SOLUSDT","ADAUSDT","DOGEUSDT","TRXUSDT","MATICUSDT","DOTUSDT",
 "LTCUSDT","AVAXUSDT","LINKUSDT","ATOMUSDT","ETCUSDT","XLMUSDT","FILUSDT","APTUSDT","NEARUSDT","ARBUSDT"];
 const INTERVALS = ["5m","15m","1h","4h","1d"];
-
-// پروکسی حل CORS
 const PROXY = url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`;
-
 const fmt = (n,d=2)=>(n==null||isNaN(n)?"-":Number(n).toLocaleString(undefined,{maximumFractionDigits:d}));
 const withinPct = (price, level, pct=0.3)=>price && level ? Math.abs((price-level)/level)*100<=pct : false;
-function ema(values, period){if(!values||values.length===0) return []; const k=2/(period+1); const out=[]; let prev=values[0]; out.push(prev); for(let i=1;i<values.length;i++){const v=values[i]*k+prev*(1-k); out.push(v); prev=v;} return out;}
-function rsi(values, period=14){if(!values||values.length<period+1)return[];let gains=0,losses=0;for(let i=1;i<=period;i++){const diff=values[i]-values[i-1];diff>=0?gains+=diff:losses-=diff;}let avgGain=gains/period,avgLoss=losses/period;const out=new Array(period).fill(null);for(let i=period+1;i<values.length;i++){const diff=values[i]-values[i-1];const gain=diff>0?diff:0;const loss=diff<0?-diff:0;avgGain=(avgGain*(period-1)+gain)/period; avgLoss=(avgLoss*(period-1)+loss)/period;const rs=avgLoss===0?1000:avgGain/avgLoss;out.push(100-(100/(1+rs)));}return out;}
+function ema(values, period){if(!values||values.length===0)return[];const k=2/(period+1);const out=[];let prev=values[0];out.push(prev);for(let i=1;i<values.length;i++){const v=values[i]*k+prev*(1-k);out.push(v);prev=v;}return out;}
+function rsi(values, period=14){if(!values||values.length<period+1)return[];let gains=0,losses=0;for(let i=1;i<=period;i++){const diff=values[i]-values[i-1];diff>=0?gains+=diff:losses-=diff;}let avgGain=gains/period,avgLoss=losses/period;const out=new Array(period).fill(null);for(let i=period+1;i<values.length;i++){const diff=values[i]-values[i-1];const gain=diff>0?diff:0;const loss=diff<0?-diff:0;avgGain=(avgGain*(period-1)+gain)/period;avgLoss=(avgLoss*(period-1)+loss)/period;const rs=avgLoss===0?1000:avgGain/avgLoss;out.push(100-(100/(1+rs)));}return out;}
 function macd(values, fast=12, slow=26, signalPeriod=9){const ef=ema(values,fast); const es=ema(values,slow); const macdLine=ef.map((v,i)=>(es[i]==null?null:(v-es[i]))); const start=slow; const macdValid=macdLine.slice(start).filter(v=>v!=null); const signalPart=ema(macdValid,signalPeriod); return {macdLine, signalLine:new Array(start).fill(null).concat(signalPart)};}
-async function fetchKlines(symbol,interval="15m",limit=300){const res = await fetch(PROXY(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`));const data = await res.json();return Array.isArray(data)?data:[];}
-function decideStrategy({last, ema20v, ema50v, ema200v, rsiv, macdv, sigv}){if(last>ema20v && last>ema50v && ema50v>ema200v && macdv>sigv && rsiv>50) return "هولد"; if(last<ema20v && last<ema50v && ema50v<ema200v && macdv<sigv && rsiv<50) return "فروش"; return "نوسان‌گیری";}
-function correctionBadge({last, ema20v, ema50v, rsiv, macdv, sigv}){return (last<ema20v && last<ema50v && rsiv<50 && macdv<sigv)?'⚠️':'✅';}
+async function fetchKlines(symbol,interval="15m",limit=300){const res=await fetch(PROXY(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`));return Array.isArray(await res.json())?await res.json():[];}
+function decideStrategy({last, ema20v, ema50v, ema200v, rsiv, macdv, sigv}){if(last>ema20v&&last>ema50v&&ema50v>ema200v&&macdv>sigv&&rsiv>50)return"هولد";if(last<ema20v&&last<ema50v&&ema50v<ema200v&&macdv<sigv&&rsiv<50)return"فروش";return"نوسان‌گیری";}
+function correctionBadge({last, ema20v, ema50v, rsiv, macdv, sigv}){return(last<ema20v&&last<ema50v&&rsiv<50&&macdv<sigv)?'⚠️':'✅';}
 
-// ساخت جدول با همه تایم‌فریم‌ها هنگام جستجو
+// ساخت جدول با رنگ‌بندی ردیف‌ها و موبایل بهینه
 async function buildTable(symbolFilter=null){
-  const tbody = document.querySelector("#crypto-table tbody");
-  tbody.innerHTML="";
-  document.getElementById("refreshBtn").disabled=true;
+const tbody=document.querySelector("#crypto-table tbody");tbody.innerHTML="";document.getElementById("refreshBtn").disabled=true;
+const symbolsToProcess=symbolFilter?SYMBOLS.filter(s=>s.includes(symbolFilter)):SYMBOLS;
+const intervalsToProcess=symbolFilter?INTERVALS:[document.getElementById("interval").value];
 
-  const symbolsToProcess = symbolFilter ? SYMBOLS.filter(s=>s.includes(symbolFilter)) : SYMBOLS;
-  const intervalsToProcess = symbolFilter ? INTERVALS : [document.getElementById("interval").value];
+for(let si=0;si<symbolsToProcess.length;si++){
+const symbol=symbolsToProcess[si];
+for(const interval of intervalsToProcess){
+try{
+const kl=await fetchKlines(symbol,interval,300);if(!kl.length)continue;
+const closes=kl.map(k=>+k[4]);const last=closes.at(-1)||0;
+const ema9v=ema(closes,9).at(-1)||0;const ema20v=ema(closes,20).at(-1)||0;
+const ema50v=ema(closes,50).at(-1)||0;const ema100v=ema(closes,100).at(-1)||0;const ema200v=ema(closes,200).at(-1)||0;
+const rsiv=rsi(closes,14).at(-1)||0;
+const {macdLine, signalLine}=macd(closes,12,26,9);
+const macdv=macdLine.at(-1)||0;const sigv=signalLine.at(-1)||0;
 
-  for(let si=0; si<symbolsToProcess.length; si++){
-    const symbol = symbolsToProcess[si];
-    const rowColorClass = si%2===0?"even":"odd";
+const strategy=decideStrategy({last, ema20v, ema50v, ema200v, rsiv, macdv, sigv});
+const correction=correctionBadge({last, ema20v, ema50v, rsiv, macdv, sigv});
+const last20=closes.slice(-20);const support=Math.min(...last20);const resistance=Math.max(...last20);
+const onSupport=withinPct(last,support,0.3)?"✅":"—";const onResistance=withinPct(last,resistance,0.3)?"✅":"—";
+const breakout=last>resistance*1.002?"✅":"—";const prevRsi=rsi(closes,14).slice(-2)[0]||0;
+const bounce=withinPct(last,support,0.3)&&rsiv>prevRsi?"✅":"—";
+const ema50Prev=ema(closes,50).slice(-2)[0]||0;const ema200Prev=ema(closes,200).slice(-2)[0]||0;
+const golden=ema50Prev<ema200Prev&&ema50v>ema200v?"✅":"—";
+const rally=last>ema9v&&last>ema20v&&rsiv>70&&macdv>sigv?"✅":"—";
 
-    for(const interval of intervalsToProcess){
-      try{
-        const kl = await fetchKlines(symbol, interval, 300);
-        if(!kl.length) continue;
-        const closes = kl.map(k=>+k[4]);
-        const last = closes.at(-1)||0;
-        const ema9v = ema(closes,9).at(-1)||0;
-        const ema20v = ema(closes,20).at(-1)||0;
-        const ema50v = ema(closes,50).at(-1)||0;
-        const ema100v = ema(closes,100).at(-1)||0;
-        const ema200v = ema(closes,200).at(-1)||0;
-        const rsiv = rsi(closes,14).at(-1)||0;
-        const {macdLine, signalLine} = macd(closes,12,26,9);
-        const macdv = macdLine.at(-1)||0;
-        const sigv = signalLine.at(-1)||0;
+const tr=document.createElement("tr");tr.className=`row-${si%5}`;
+const cells=[symbol, interval, fmt(last,4), fmt(rsiv,2), fmt(ema9v,4), fmt(ema20v,4), fmt(ema50v,4),
+fmt(ema100v,4), fmt(ema200v,4), fmt(macdv,6), fmt(sigv,6),
+fmt(support,4), fmt(resistance,4), onSupport, onResistance, breakout, bounce, golden, rally, strategy, correction];
 
-        const strategy = decideStrategy({last, ema20v, ema50v, ema200v, rsiv, macdv, sigv});
-        const correction = correctionBadge({last, ema20v, ema50v, rsiv, macdv, sigv});
-        const last20 = closes.slice(-20);
-        const support = Math.min(...last20);
-        const resistance = Math.max(...last20);
-        const onSupport = withinPct(last,support,0.3)?"✅":"—";
-        const onResistance = withinPct(last,resistance,0.3)?"✅":"—";
-        const breakout = last>resistance*1.002?"✅":"—";
-        const prevRsi = rsi(closes,14).slice(-2)[0]||0;
-        const bounce = withinPct(last,support,0.3) && rsiv>prevRsi?"✅":"—";
-        const ema50Prev = ema(closes,50).slice(-2)[0]||0;
-        const ema200Prev = ema(closes,200).slice(-2)[0]||0;
-        const golden = ema50Prev<ema200Prev && ema50v>ema200v?"✅":"—";
-        const rally = last>ema9v && last>ema20v && rsiv>70 && macdv>sigv?"✅":"—";
-
-        const tr = document.createElement("tr");
-        const cells = [symbol, interval, fmt(last,4), fmt(rsiv,2), fmt(ema9v,4), fmt(ema20v,4),
-          fmt(ema50v,4), fmt(ema100v,4), fmt(ema200v,4), fmt(macdv,6), fmt(sigv,6),
-          fmt(support,4), fmt(resistance,4), onSupport, onResistance, breakout, bounce, golden, rally, strategy, correction];
-        cells.forEach(val=>{
-          const td=document.createElement("td");
-          td.textContent=val;
-          tr.appendChild(td);
-        });
-        tbody.appendChild(tr);
-      }catch(err){
-        const tr = document.createElement("tr");
-        tr.innerHTML = `<td colspan="21" style="color:red">خطا برای ${symbol} (${interval}): ${err.message}</td>`;
-        tbody.appendChild(tr);
-      }
-    }
-  }
-  document.getElementById("lastUpdate").textContent = "آخرین بروزرسانی: "+new Date().toLocaleString();
-  document.getElementById("refreshBtn").disabled=false;
+cells.forEach(val=>{const td=document.createElement("td");td.textContent=val;tr.appendChild(td);});
+tbody.appendChild(tr);
+}catch(err){const tr=document.createElement("tr");tr.innerHTML=`<td colspan="21" style="color:red">خطا برای ${symbol} (${interval}): ${err.message}</td>`;tbody.appendChild(tr);}
+}}
+document.getElementById("lastUpdate").textContent="آخرین بروزرسانی: "+new Date().toLocaleString();
+document.getElementById("refreshBtn").disabled=false;
 }
 
-// ذخیره در txt
-function saveTableToTxt(){
-  const table = document.getElementById("crypto-table");
-  let txt = Array.from(table.querySelectorAll("thead th")).map(th=>th.textContent.trim()).join("\t")+"\n";
-  table.querySelectorAll("tbody tr").forEach(row=>{
-    txt+=Array.from(row.querySelectorAll("td")).map(td=>td.textContent.trim()).join("\t")+"\n";
-  });
-  const blob = new Blob([txt],{type:"text/plain;charset=utf-8"});
-  const a = document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="crypto_data.txt"; a.click();
-  URL.revokeObjectURL(a.href);
-}
+// ذخیره txt
+function saveTableToTxt(){const table=document.getElementById("crypto-table");let txt=Array.from(table.querySelectorAll("thead th")).map(th=>th.textContent.trim()).join("\t")+"\n";table.querySelectorAll("tbody tr").forEach(row=>{txt+=Array.from(row.querySelectorAll("td")).map(td=>td.textContent.trim()).join("\t")+"\n";});const blob=new Blob([txt],{type:"text/plain;charset=utf-8"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="crypto_data.txt";a.click();URL.revokeObjectURL(a.href);}
 
 document.getElementById("refreshBtn").addEventListener("click",()=>buildTable());
 document.getElementById("searchBox").addEventListener("change",e=>buildTable(e.target.value.toUpperCase()));
 document.getElementById("saveBtn").addEventListener("click",saveTableToTxt);
 
-// اجرای اولیه
 buildTable();
 </script>
 </body>
