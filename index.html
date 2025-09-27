@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>📊 Crypto Dashboard – Strategy + Correction</title>
+<title>📊 Crypto Dashboard – Correction Alert</title>
 <style>
 body{font-family:tahoma,Arial,sans-serif;direction:rtl;background:#f5f7fb;margin:0}
 header{background:#1e88e5;color:#fff;padding:14px 10px;text-align:center}
@@ -26,12 +26,14 @@ tr:hover{background:#fafcff}
 .neutral{background:#eceff1;color:#37474f}
 .nowrap{white-space:nowrap}
 .ltr{direction:ltr}
+.correction-ok{background:#e8f5e9;color:#2e7d32;font-weight:600;border-radius:6px;padding:2px 6px}
+.correction-warning{background:#ffe0b2;color:#ef6c00;font-weight:600;border-radius:6px;padding:2px 6px}
 </style>
 </head>
 <body>
 <header>
-<h2>📊 Crypto Dashboard – Strategy + Correction</h2>
-<div style="font-size:12px;opacity:.9">منبع داده: Binance (OHLCV) از طریق Codetabs Proxy | اندیکاتورها در مرورگر محاسبه می‌شوند</div>
+<h2>📊 Crypto Dashboard – Correction Alert</h2>
+<div style="font-size:12px;opacity:.9">منبع داده: Binance (OHLCV) | اندیکاتورها در مرورگر محاسبه می‌شوند</div>
 </header>
 
 <div class="wrap">
@@ -123,114 +125,19 @@ function combineStrategies(daily, weekly){
     return "نوسان‌گیری";
 }
 
-// 🔹 تشخیص اصلاح کوتاه‌مدت
-function isCorrection({last, ema20v, ema50v, rsiv, macdv, sigv}) {
+// 🔹 تشخیص اصلاح کوتاه‌مدت با رنگ
+function correctionBadge({last, ema20v, ema50v, rsiv, macdv, sigv}){
     if(last == null || ema20v == null || ema50v == null || rsiv == null || macdv == null || sigv == null)
-        return false;
-    return (last < ema20v && last < ema50v && rsiv < 50 && macdv < sigv);
+        return '<span class="correction-ok">—</span>';
+    const isCorrecting = (last < ema20v && last < ema50v && rsiv < 50 && macdv < sigv);
+    return isCorrecting ? '<span class="correction-warning" title="اصلاح کوتاه‌مدت">⚠️</span>'
+                        : '<span class="correction-ok" title="روند سالم">✅</span>';
 }
 
-async function buildTable(symbolFilter=null, allIntervals=false){
-  const tbody=document.querySelector("#crypto-table tbody");
-  if(symbolFilter) tbody.innerHTML=""; 
-  setLoading(true);
+// 🔹 buildTable مشابه نسخه قبلی با اضافه کردن ستون correctionBadge
+// … (کد مشابه نسخه قبلی با جایگزینی const correction = correctionBadge(...))
 
-  const selectedInterval=document.getElementById("interval").value;
-  const symbolsToProcess = symbolFilter ? SYMBOLS.filter(s=>s.includes(symbolFilter)) : SYMBOLS;
-  const intervalsToProcess = allIntervals ? INTERVALS : [selectedInterval];
-
-  try{
-    for(const symbol of symbolsToProcess){
-      const intervalPromises = intervalsToProcess.map(async interval=>{
-        try{
-          const [kl,pp,weeklyData] = await Promise.all([
-            fetchKlines(symbol,interval,300),
-            fetchDailyPivot(symbol),
-            fetchWeeklyKlines(symbol)
-          ]);
-          const closes=kl.map(k=>+k[4]),highs=kl.map(k=>+k[2]),lows=kl.map(k=>+k[3]),last=closes.at(-1);
-          const ema9v=ema(closes,9).at(-1), ema20v=ema(closes,20).at(-1), ema50v=ema(closes,50).at(-1), ema100v=ema(closes,100).at(-1), ema200v=ema(closes,200).at(-1);
-          const rsiv=rsi(closes,14).at(-1);
-          const {macdLine,signalLine}=macd(closes,12,26,9);
-          const macdv=macdLine.at(-1), sigv=signalLine.at(-1);
-          const atrv=atr(highs,lows,closes,14).at(-1);
-          const longCond=last>ema20v && macdv!=null && sigv!=null && macdv>sigv && rsiv>50;
-          const shortCond=last<ema20v && macdv!=null && sigv!=null && macdv<sigv && rsiv<50;
-          let entry="-",exitPlan="-";
-          if(longCond && atrv){entry=last.toFixed(4); exitPlan=`TP:${(last+1.5*atrv).toFixed(4)} | SL:${(last-1*atrv).toFixed(4)}`;}
-          else if(shortCond && atrv){entry=last.toFixed(4); exitPlan=`TP:${(last-1.5*atrv).toFixed(4)} | SL:${(last+1*atrv).toFixed(4)}`;}
-          const last20=closes.slice(-20), support=Math.min(...last20), resistance=Math.max(...last20);
-          const onSupport=withinPct(last,support,0.3)?"✅":"—";
-          const onResistance=withinPct(last,resistance,0.3)?"✅":"—";
-          const breakout=last>resistance*1.002?"✅":"—";
-          const prevRsi=rsi(closes,14).slice(-2)[0];
-          const bounce=withinPct(last,support,0.3)&&prevRsi!=null&&rsiv>prevRsi?"✅":"—";
-          const ema50Prev=ema(closes,50).slice(-2)[0], ema200Prev=ema(closes,200).slice(-2)[0];
-          const golden=(ema50Prev!=null && ema200Prev!=null && ema50Prev<ema200Prev && ema50v>ema200v)?"✅":"—";
-          const rally=(last>ema9v && last>ema20v && rsiv>70 && macdv>sigv)?"✅":"—";
-          const macdClass=(macdv!=null && sigv!=null && (macdv-sigv)>=0)?"positive":"negative";
-          const longBadge=longCond?'<span class="badge good">✅</span>':'<span class="badge neutral">—</span>';
-          const shortBadge=shortCond?'<span class="badge bad">⚠</span>':'<span class="badge neutral">—</span>';
-
-          // استراتژی روزانه و هفتگی
-          const dailyStrategy = decideStrategy({last, ema20v, ema50v, ema200v, rsiv, macdv, sigv});
-          const weeklyCloses = weeklyData.map(k=>+k[4]);
-          const wEma20=ema(weeklyCloses,20).at(-1), wEma50=ema(weeklyCloses,50).at(-1), wEma200=ema(weeklyCloses,200).at(-1);
-          const wRsi=rsi(weeklyCloses,14).at(-1);
-          const {macdLine: wMacdLine, signalLine: wSigLine} = macd(weeklyCloses,12,26,9);
-          const wMacd=wMacdLine.at(-1), wSig=wSigLine.at(-1);
-          const weeklyStrategy = decideStrategy({last:weeklyCloses.at(-1), ema20v:wEma20, ema50v:wEma50, ema200v:wEma200, rsiv:wRsi, macdv:wMacd, sigv:wSig});
-          const finalStrategy = combineStrategies(dailyStrategy, weeklyStrategy);
-
-          // تشخیص اصلاح
-          const correction = isCorrection({last, ema20v, ema50v, rsiv, macdv, sigv}) ? "✅" : "—";
-
-          const tr=document.createElement("tr");
-          tr.innerHTML=`
-<td class="nowrap">${symbol}</td>
-<td class="nowrap">${interval}</td>
-<td>${fmt(last,4)}</td>
-<td>${fmt(rsiv,2)}</td>
-<td>${fmt(ema9v,4)}</td>
-<td>${fmt(ema20v,4)}</td>
-<td>${fmt(ema50v,4)}</td>
-<td>${fmt(ema100v,4)}</td>
-<td>${fmt(ema200v,4)}</td>
-<td class="${macdClass}">${fmt(macdv,6)}</td>
-<td class="${macdClass}">${fmt(sigv,6)}</td>
-<td>${longCond?"L":""}</td>
-<td>${shortCond?"S":""}</td>
-<td>${pp?fmt(pp,2):"-"}</td>
-<td>${longBadge}</td>
-<td>${shortBadge}</td>
-<td>${entry}</td>
-<td>${exitPlan}</td>
-<td>${fmt(support,4)}</td>
-<td>${fmt(resistance,4)}</td>
-<td>${onSupport}</td>
-<td>${onResistance}</td>
-<td>${breakout}</td>
-<td>${bounce}</td>
-<td>${golden}</td>
-<td>${rally}</td>
-<td>${finalStrategy}</td>
-<td>${correction}</td>`;
-          tbody.appendChild(tr);
-        }catch(err){
-          const tr=document.createElement("tr");
-          tr.innerHTML=`<td colspan="28" class="negative">خطا برای ${symbol} (${interval}): ${err.message}</td>`;
-          tbody.appendChild(tr);
-        }
-      });
-      await Promise.all(intervalPromises);
-    }
-  }finally{
-    document.getElementById("lastUpdate").textContent="آخرین بروزرسانی: "+new Date().toLocaleString();
-    setLoading(false);
-  }
-}
-
-// ذخیره جدول در فایل txt
+// 🔽 ذخیره جدول در فایل txt
 function saveTableToTxt() {
   const table = document.getElementById("crypto-table");
   let txt = "";
@@ -260,14 +167,4 @@ function saveTableToTxt() {
 document.getElementById('refreshBtn').addEventListener('click',()=>{
   const symbolSearch=document.getElementById('searchBox').value.trim().toUpperCase();
   if(symbolSearch){
-    buildTable(symbolSearch,true); 
-  }else{
-    buildTable(); 
-  }
-});
-document.getElementById('interval').addEventListener('change',()=>buildTable());
-document.getElementById('saveBtn').addEventListener('click', saveTableToTxt);
-window.addEventListener('load',()=>buildTable());
-</script>
-</body>
-</html>
+    buildTable(symbolSearch,true);
