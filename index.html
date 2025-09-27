@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>📊 Crypto Dashboard – Fast Multi-Symbol</title>
+<title>📊 Crypto Dashboard – Batch Processing</title>
 <style>
 body{font-family:tahoma,Arial,sans-serif;direction:rtl;background:#f5f7fb;margin:0}
 header{background:#1e88e5;color:#fff;padding:14px 10px;text-align:center}
@@ -24,8 +24,8 @@ tr:hover{background:#fafcff}
 </head>
 <body>
 <header>
-<h2>📊 Crypto Dashboard – Fast Multi-Symbol</h2>
-<div style="font-size:12px;opacity:.9">منبع داده: Binance (OHLCV) | تحلیل‌ها در مرورگر انجام می‌شوند</div>
+<h2>📊 Crypto Dashboard – Batch Processing</h2>
+<div style="font-size:12px;opacity:.9">منبع داده: Binance | تحلیل‌ها در مرورگر</div>
 </header>
 
 <div class="wrap">
@@ -49,8 +49,8 @@ tr:hover{background:#fafcff}
 <thead>
 <tr>
 <th>Symbol</th><th>Interval</th><th>Price</th><th>RSI(14)</th><th>EMA20</th><th>EMA50</th>
-<th>EMA200</th><th>MACD</th><th>Signal</th><th>استراتژی کوتاه‌مدت</th><th>استراتژی هفتگی</th>
-<th>استراتژی نهایی</th><th>در حال اصلاح؟</th>
+<th>EMA200</th><th>MACD</th><th>Signal</th><th>استراتژی کوتاه‌مدت</th>
+<th>استراتژی هفتگی</th><th>استراتژی نهایی</th><th>در حال اصلاح؟</th>
 </tr>
 </thead>
 <tbody></tbody>
@@ -58,9 +58,13 @@ tr:hover{background:#fafcff}
 </div>
 
 <script>
-const SYMBOLS = ["BTCUSDT","ETHUSDT","BNBUSDT","XRPUSDT","SOLUSDT","ADAUSDT","DOGEUSDT"];
-const PROXY = url=>`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`;
+const SYMBOLS = [
+"BTCUSDT","ETHUSDT","BNBUSDT","XRPUSDT","SOLUSDT","ADAUSDT","DOGEUSDT",
+"TRXUSDT","MATICUSDT","DOTUSDT","LTCUSDT","AVAXUSDT","LINKUSDT",
+"ATOMUSDT","ETCUSDT","XLMUSDT","FILUSDT","APTUSDT","NEARUSDT","ARBUSDT"
+];
 
+const PROXY = url=>`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`;
 const fmt=(n,d=2)=>(n==null||isNaN(n)?"-":Number(n).toLocaleString(undefined,{maximumFractionDigits:d}));
 
 function ema(values,period){if(!values||values.length===0)return[];const k=2/(period+1);const out=[];let prev=values[0];out.push(prev);for(let i=1;i<values.length;i++){const v=values[i]*k+prev*(1-k);out.push(v);prev=v;}return out;}
@@ -75,7 +79,7 @@ async function fetchKlines(symbol, interval="15m", limit=300){
 }
 
 function decideStrategy({last, ema20v, ema50v, ema200v, rsiv, macdv, sigv}){
-  if(last == null) return "-";
+  if(last==null) return "-";
   if(last>ema20v && last>ema50v && ema50v>ema200v && macdv>sigv && rsiv>50) return "هولد";
   if(last<ema20v && last<ema50v && ema50v<ema200v && macdv<sigv && rsiv<50) return "فروش";
   return "نوسان‌گیری";
@@ -97,78 +101,80 @@ function correctionBadge({last, ema20v, ema50v, rsiv, macdv, sigv}){
 async function buildTable(symbolFilter=null){
   const tbody = document.querySelector("#crypto-table tbody");
   tbody.innerHTML="";
-  document.getElementById('refreshBtn').disabled=true;
   const interval = document.getElementById("interval").value;
+  document.getElementById('refreshBtn').disabled=true;
+
   const symbols = symbolFilter ? SYMBOLS.filter(s=>s.includes(symbolFilter)) : SYMBOLS;
+  const batchSize = 5; // پردازش دسته‌ای
+  for(let i=0; i<symbols.length; i+=batchSize){
+    const batch = symbols.slice(i,i+batchSize);
+    const rows = await Promise.all(batch.map(async symbol=>{
+      try{
+        const [kl, klWeek] = await Promise.all([fetchKlines(symbol, interval,300), fetchKlines(symbol,"1w",52)]);
+        const closes = kl.map(k=>+k[4]), last = closes.at(-1)||0;
+        const ema20v = ema(closes,20).at(-1)||0, ema50v = ema(closes,50).at(-1)||0, ema200v = ema(closes,200).at(-1)||0;
+        const rsiv = rsi(closes,14).at(-1)||0;
+        const {macdLine, signalLine} = macd(closes,12,26,9);
+        const macdv = macdLine.at(-1)||0, sigv = signalLine.at(-1)||0;
+        const strategyShort = decideStrategy({last, ema20v, ema50v, ema200v, rsiv, macdv, sigv});
 
-  const promises = symbols.map(async symbol=>{
-    try{
-      const [kl, klWeek] = await Promise.all([fetchKlines(symbol, interval, 300), fetchKlines(symbol, "1w", 52)]);
-      const closes = kl.map(k=>+k[4]);
-      const last = closes.at(-1)||0;
-      const ema20v = ema(closes,20).at(-1)||0;
-      const ema50v = ema(closes,50).at(-1)||0;
-      const ema200v = ema(closes,200).at(-1)||0;
-      const rsiv = rsi(closes,14).at(-1)||0;
-      const {macdLine, signalLine} = macd(closes,12,26,9);
-      const macdv = macdLine.at(-1)||0;
-      const sigv = signalLine.at(-1)||0;
-      const strategyShort = decideStrategy({last, ema20v, ema50v, ema200v, rsiv, macdv, sigv});
+        const closesWeek = klWeek.map(k=>+k[4]), lastW = closesWeek.at(-1)||0;
+        const ema20w = ema(closesWeek,20).at(-1)||0, ema50w = ema(closesWeek,50).at(-1)||0, ema200w = ema(closesWeek,200).at(-1)||0;
+        const rsivW = rsi(closesWeek,14).at(-1)||0;
+        const {macdLine:macdW, signalLine:sigW} = macd(closesWeek,12,26,9);
+        const macdvW = macdW.at(-1)||0, sigvW = sigW.at(-1)||0;
+        const strategyWeek = decideStrategy({last:lastW, ema20v:ema20w, ema50v:ema50w, ema200v:ema200w, rsiv:rsivW, macdv:macdvW, sigv:sigvW});
 
-      const closesWeek = klWeek.map(k=>+k[4]);
-      const ema20w = ema(closesWeek,20).at(-1)||0;
-      const ema50w = ema(closesWeek,50).at(-1)||0;
-      const ema200w = ema(closesWeek,200).at(-1)||0;
-      const rsivW = rsi(closesWeek,14).at(-1)||0;
-      const {macdLine:macdW, signalLine:sigW} = macd(closesWeek,12,26,9);
-      const macdvW = macdW.at(-1)||0;
-      const sigvW = sigW.at(-1)||0;
-      const strategyWeek = decideStrategy({last:closesWeek.at(-1), ema20v:ema20w, ema50v:ema50w, ema200v:ema200w, rsiv:rsivW, macdv:macdvW, sigv:sigvW});
+        const finalStrategy = combineStrategies(strategyShort, strategyWeek);
+        const correction = correctionBadge({last, ema20v, ema50v, rsiv, macdv, sigv});
 
-      const strategyFinal = combineStrategies(strategyShort, strategyWeek);
-      const correction = correctionBadge({last, ema20v, ema50v, rsiv, macdv, sigv});
-
-      return `<tr>
-<td>${symbol}</td>
-<td>${interval}</td>
-<td>${fmt(last,4)}</td>
-<td>${fmt(rsiv,2)}</td>
-<td>${fmt(ema20v,4)}</td>
-<td>${fmt(ema50v,4)}</td>
-<td>${fmt(ema200v,4)}</td>
-<td>${fmt(macdv,6)}</td>
-<td>${fmt(sigv,6)}</td>
-<td>${strategyShort}</td>
-<td>${strategyWeek}</td>
-<td>${strategyFinal}</td>
-<td>${correction}</td>
-</tr>`;
-    }catch(err){
-      return `<tr><td colspan="13" class="negative">خطا برای ${symbol}: ${err.message}</td></tr>`;
-    }
-  });
-
-  const rows = await Promise.all(promises);
-  tbody.innerHTML = rows.join("");
+        return `<tr>
+        <td>${symbol}</td>
+        <td>${interval}</td>
+        <td>${fmt(last,4)}</td>
+        <td>${fmt(rsiv,2)}</td>
+        <td>${fmt(ema20v,4)}</td>
+        <td>${fmt(ema50v,4)}</td>
+        <td>${fmt(ema200v,4)}</td>
+        <td>${fmt(macdv,6)}</td>
+        <td>${fmt(sigv,6)}</td>
+        <td>${strategyShort}</td>
+        <td>${strategyWeek}</td>
+        <td>${finalStrategy}</td>
+        <td>${correction}</td>
+        </tr>`;
+      }catch(err){
+        return `<tr><td colspan="13" class="negative">خطا برای ${symbol}: ${err.message}</td></tr>`;
+      }
+    }));
+    tbody.innerHTML += rows.join("");
+  }
   document.getElementById("lastUpdate").textContent="آخرین بروزرسانی: "+new Date().toLocaleString();
   document.getElementById('refreshBtn').disabled=false;
 }
 
-// ذخیره جدول
-document.getElementById('saveBtn').addEventListener('click',()=>{
+// ذخیره
+function saveTableToTxt(){
   const table = document.getElementById("crypto-table");
-  let txt = Array.from(table.querySelectorAll("thead th")).map(th=>th.textContent.trim()).join("\t")+"\n";
+  let txt = "";
+  txt += Array.from(table.querySelectorAll("thead th")).map(th=>th.textContent).join("\t")+"\n";
   table.querySelectorAll("tbody tr").forEach(row=>{
-    txt+=Array.from(row.querySelectorAll("td")).map(td=>td.textContent.trim()).join("\t")+"\n";
+    txt += Array.from(row.querySelectorAll("td")).map(td=>td.textContent).join("\t")+"\n";
   });
-  const blob = new Blob([txt], { type:"text/plain;charset=utf-8" });
-  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="crypto_data.txt"; a.click(); URL.revokeObjectURL(a.href);
+  const blob = new Blob([txt],{type:"text/plain;charset=utf-8"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="crypto_data.txt";
+  a.click();
+}
+
+document.getElementById('refreshBtn').addEventListener('click',()=>{
+  const search = document.getElementById('searchBox').value.trim().toUpperCase();
+  buildTable(search||null);
 });
-
-document.getElementById('refreshBtn').addEventListener('click',()=>buildTable(document.getElementById('searchBox').value.trim().toUpperCase()));
-
-// بارگذاری اولیه
-buildTable();
+document.getElementById('interval').addEventListener('change',()=>buildTable());
+document.getElementById('saveBtn').addEventListener('click',saveTableToTxt);
+window.addEventListener('load',()=>buildTable());
 </script>
 </body>
 </html>
