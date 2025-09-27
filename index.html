@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>📊 Crypto Dashboard – Fixed Search & Update + Save + Strategy</title>
+<title>📊 Crypto Dashboard – Strategy + Correction</title>
 <style>
 body{font-family:tahoma,Arial,sans-serif;direction:rtl;background:#f5f7fb;margin:0}
 header{background:#1e88e5;color:#fff;padding:14px 10px;text-align:center}
@@ -30,7 +30,7 @@ tr:hover{background:#fafcff}
 </head>
 <body>
 <header>
-<h2>📊 Crypto Dashboard – Fixed Search & Update + Strategy</h2>
+<h2>📊 Crypto Dashboard – Strategy + Correction</h2>
 <div style="font-size:12px;opacity:.9">منبع داده: Binance (OHLCV) از طریق Codetabs Proxy | اندیکاتورها در مرورگر محاسبه می‌شوند</div>
 </header>
 
@@ -54,7 +54,11 @@ tr:hover{background:#fafcff}
 <table id="crypto-table">
 <thead>
 <tr>
-<th>Symbol</th><th>Interval</th><th>Price</th><th>RSI(14)</th><th>EMA9</th><th>EMA20</th><th>EMA50</th><th>EMA100</th><th>EMA200</th><th>MACD</th><th>Signal</th><th>L</th><th>S</th><th>PP</th><th>Long</th><th>Short</th><th>Entry</th><th>Exit (TP/SL)</th><th>Support</th><th>Resistance</th><th>تثبیت روی حمایت؟</th><th>تثبیت روی مقاومت؟</th><th>Breakout</th><th>Bounce</th><th>Golden Cross</th><th>Rally</th><th>استراتژی</th>
+<th>Symbol</th><th>Interval</th><th>Price</th><th>RSI(14)</th><th>EMA9</th><th>EMA20</th><th>EMA50</th><th>EMA100</th><th>EMA200</th>
+<th>MACD</th><th>Signal</th><th>L</th><th>S</th><th>PP</th><th>Long</th><th>Short</th>
+<th>Entry</th><th>Exit (TP/SL)</th><th>Support</th><th>Resistance</th><th>تثبیت روی حمایت؟</th>
+<th>تثبیت روی مقاومت؟</th><th>Breakout</th><th>Bounce</th><th>Golden Cross</th><th>Rally</th>
+<th>استراتژی</th><th>در حال اصلاح؟</th>
 </tr>
 </thead>
 <tbody></tbody>
@@ -84,6 +88,14 @@ async function fetchKlines(symbol,interval="15m",limit=300){
   return data;
 }
 
+async function fetchWeeklyKlines(symbol, limit=100){
+  const res = await fetch(PROXY(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1w&limit=${limit}`));
+  if(!res.ok) throw new Error(`HTTP ${res.status}`);
+  const data = await res.json();
+  if(!Array.isArray(data)) throw new Error("Bad payload");
+  return data;
+}
+
 async function fetchDailyPivot(symbol){
   const res=await fetch(PROXY(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1d&limit=3`));
   if(!res.ok)return null;
@@ -95,13 +107,27 @@ async function fetchDailyPivot(symbol){
 
 function setLoading(state){document.getElementById('refreshBtn').disabled=state;document.getElementById('refreshBtn').textContent=state?'در حال بروزرسانی…':'بروزرسانی';}
 
-// 🔹 تابع تصمیم‌گیری استراتژی
+// 🔹 تصمیم‌گیری استراتژی تک تایم‌فریم
 function decideStrategy({last, ema20v, ema50v, ema200v, rsiv, macdv, sigv}) {
     if(last == null || ema20v == null || ema50v == null || ema200v == null || rsiv == null || macdv == null || sigv == null)
         return "-";
     if(last > ema20v && last > ema50v && ema50v > ema200v && macdv > sigv && rsiv > 50) return "هولد";
     if(last < ema20v && last < ema50v && ema50v < ema200v && macdv < sigv && rsiv < 50) return "فروش";
     return "نوسان‌گیری";
+}
+
+// 🔹 ترکیب دو تایم‌فریم
+function combineStrategies(daily, weekly){
+    if(daily==="هولد" && weekly==="هولد") return "هولد";
+    if(daily==="فروش" && weekly==="فروش") return "فروش";
+    return "نوسان‌گیری";
+}
+
+// 🔹 تشخیص اصلاح کوتاه‌مدت
+function isCorrection({last, ema20v, ema50v, rsiv, macdv, sigv}) {
+    if(last == null || ema20v == null || ema50v == null || rsiv == null || macdv == null || sigv == null)
+        return false;
+    return (last < ema20v && last < ema50v && rsiv < 50 && macdv < sigv);
 }
 
 async function buildTable(symbolFilter=null, allIntervals=false){
@@ -117,7 +143,11 @@ async function buildTable(symbolFilter=null, allIntervals=false){
     for(const symbol of symbolsToProcess){
       const intervalPromises = intervalsToProcess.map(async interval=>{
         try{
-          const [kl,pp] = await Promise.all([fetchKlines(symbol,interval,300),fetchDailyPivot(symbol)]);
+          const [kl,pp,weeklyData] = await Promise.all([
+            fetchKlines(symbol,interval,300),
+            fetchDailyPivot(symbol),
+            fetchWeeklyKlines(symbol)
+          ]);
           const closes=kl.map(k=>+k[4]),highs=kl.map(k=>+k[2]),lows=kl.map(k=>+k[3]),last=closes.at(-1);
           const ema9v=ema(closes,9).at(-1), ema20v=ema(closes,20).at(-1), ema50v=ema(closes,50).at(-1), ema100v=ema(closes,100).at(-1), ema200v=ema(closes,200).at(-1);
           const rsiv=rsi(closes,14).at(-1);
@@ -142,8 +172,18 @@ async function buildTable(symbolFilter=null, allIntervals=false){
           const longBadge=longCond?'<span class="badge good">✅</span>':'<span class="badge neutral">—</span>';
           const shortBadge=shortCond?'<span class="badge bad">⚠</span>':'<span class="badge neutral">—</span>';
 
-          // 🔹 تصمیم نهایی
-          const strategy = decideStrategy({last, ema20v, ema50v, ema200v, rsiv, macdv, sigv});
+          // استراتژی روزانه و هفتگی
+          const dailyStrategy = decideStrategy({last, ema20v, ema50v, ema200v, rsiv, macdv, sigv});
+          const weeklyCloses = weeklyData.map(k=>+k[4]);
+          const wEma20=ema(weeklyCloses,20).at(-1), wEma50=ema(weeklyCloses,50).at(-1), wEma200=ema(weeklyCloses,200).at(-1);
+          const wRsi=rsi(weeklyCloses,14).at(-1);
+          const {macdLine: wMacdLine, signalLine: wSigLine} = macd(weeklyCloses,12,26,9);
+          const wMacd=wMacdLine.at(-1), wSig=wSigLine.at(-1);
+          const weeklyStrategy = decideStrategy({last:weeklyCloses.at(-1), ema20v:wEma20, ema50v:wEma50, ema200v:wEma200, rsiv:wRsi, macdv:wMacd, sigv:wSig});
+          const finalStrategy = combineStrategies(dailyStrategy, weeklyStrategy);
+
+          // تشخیص اصلاح
+          const correction = isCorrection({last, ema20v, ema50v, rsiv, macdv, sigv}) ? "✅" : "—";
 
           const tr=document.createElement("tr");
           tr.innerHTML=`
@@ -173,11 +213,12 @@ async function buildTable(symbolFilter=null, allIntervals=false){
 <td>${bounce}</td>
 <td>${golden}</td>
 <td>${rally}</td>
-<td>${strategy}</td>`;
+<td>${finalStrategy}</td>
+<td>${correction}</td>`;
           tbody.appendChild(tr);
         }catch(err){
           const tr=document.createElement("tr");
-          tr.innerHTML=`<td colspan="27" class="negative">خطا برای ${symbol} (${interval}): ${err.message}</td>`;
+          tr.innerHTML=`<td colspan="28" class="negative">خطا برای ${symbol} (${interval}): ${err.message}</td>`;
           tbody.appendChild(tr);
         }
       });
@@ -189,17 +230,24 @@ async function buildTable(symbolFilter=null, allIntervals=false){
   }
 }
 
-// 🔽 ذخیره جدول در فایل txt
+// ذخیره جدول در فایل txt
 function saveTableToTxt() {
   const table = document.getElementById("crypto-table");
   let txt = "";
-  const headers = Array.from(table.querySelectorAll("thead th")).map(th => th.textContent.trim()).join("\t");
+
+  const headers = Array.from(table.querySelectorAll("thead th"))
+    .map(th => th.textContent.trim())
+    .join("\t");
   txt += headers + "\n";
+
   const rows = table.querySelectorAll("tbody tr");
   rows.forEach(row => {
-    const cells = Array.from(row.querySelectorAll("td")).map(td => td.textContent.trim()).join("\t");
+    const cells = Array.from(row.querySelectorAll("td"))
+      .map(td => td.textContent.trim())
+      .join("\t");
     txt += cells + "\n";
   });
+
   const blob = new Blob([txt], { type: "text/plain;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
