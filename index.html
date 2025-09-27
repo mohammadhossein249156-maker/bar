@@ -61,17 +61,16 @@ td:first-child, th:first-child{position:sticky;left:0;background:#fdfdfd;z-index
 </div>
 
 <script>
-// لیست سمبل‌ها
-const SYMBOLS = ["BTCUSDT","ETHUSDT","BNBUSDT","XRPUSDT","SOLUSDT","ADAUSDT","DOGEUSDT","TRXUSDT","MATICUSDT","DOTUSDT"];
+// آرایه کامل ۲۰ سمبل
+const SYMBOLS = ["BTCUSDT","ETHUSDT","BNBUSDT","XRPUSDT","SOLUSDT","ADAUSDT","DOGEUSDT","TRXUSDT","MATICUSDT","DOTUSDT",
+"LTCUSDT","AVAXUSDT","LINKUSDT","ATOMUSDT","ETCUSDT","XLMUSDT","FILUSDT","APTUSDT","NEARUSDT","ARBUSDT"];
 const INTERVALS = ["5m","15m","1h","4h","1d"];
 
-// پروکسی برای حل CORS
+// پروکسی حل CORS
 const PROXY = url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`;
 
-// توابع کمکی
 const fmt = (n,d=2)=>(n==null||isNaN(n)?"-":Number(n).toLocaleString(undefined,{maximumFractionDigits:d}));
 const withinPct = (price, level, pct=0.3)=>price && level ? Math.abs((price-level)/level)*100<=pct : false;
-
 function ema(values, period){if(!values||values.length===0) return []; const k=2/(period+1); const out=[]; let prev=values[0]; out.push(prev); for(let i=1;i<values.length;i++){const v=values[i]*k+prev*(1-k); out.push(v); prev=v;} return out;}
 function rsi(values, period=14){if(!values||values.length<period+1)return[];let gains=0,losses=0;for(let i=1;i<=period;i++){const diff=values[i]-values[i-1];diff>=0?gains+=diff:losses-=diff;}let avgGain=gains/period,avgLoss=losses/period;const out=new Array(period).fill(null);for(let i=period+1;i<values.length;i++){const diff=values[i]-values[i-1];const gain=diff>0?diff:0;const loss=diff<0?-diff:0;avgGain=(avgGain*(period-1)+gain)/period; avgLoss=(avgLoss*(period-1)+loss)/period;const rs=avgLoss===0?1000:avgGain/avgLoss;out.push(100-(100/(1+rs)));}return out;}
 function macd(values, fast=12, slow=26, signalPeriod=9){const ef=ema(values,fast); const es=ema(values,slow); const macdLine=ef.map((v,i)=>(es[i]==null?null:(v-es[i]))); const start=slow; const macdValid=macdLine.slice(start).filter(v=>v!=null); const signalPart=ema(macdValid,signalPeriod); return {macdLine, signalLine:new Array(start).fill(null).concat(signalPart)};}
@@ -79,69 +78,72 @@ async function fetchKlines(symbol,interval="15m",limit=300){const res = await fe
 function decideStrategy({last, ema20v, ema50v, ema200v, rsiv, macdv, sigv}){if(last>ema20v && last>ema50v && ema50v>ema200v && macdv>sigv && rsiv>50) return "هولد"; if(last<ema20v && last<ema50v && ema50v<ema200v && macdv<sigv && rsiv<50) return "فروش"; return "نوسان‌گیری";}
 function correctionBadge({last, ema20v, ema50v, rsiv, macdv, sigv}){return (last<ema20v && last<ema50v && rsiv<50 && macdv<sigv)?'⚠️':'✅';}
 
-// ساخت جدول
+// ساخت جدول با همه تایم‌فریم‌ها هنگام جستجو
 async function buildTable(symbolFilter=null){
   const tbody = document.querySelector("#crypto-table tbody");
   tbody.innerHTML="";
   document.getElementById("refreshBtn").disabled=true;
 
   const symbolsToProcess = symbolFilter ? SYMBOLS.filter(s=>s.includes(symbolFilter)) : SYMBOLS;
-  const interval = document.getElementById("interval").value;
-  const headers = ["Symbol","Interval","Price","RSI","EMA9","EMA20","EMA50","EMA100","EMA200","MACD","Signal","Support","Resistance","OnSupport","OnResistance","Breakout","Bounce","Golden","Rally","Strategy","Correction"];
+  const intervalsToProcess = symbolFilter ? INTERVALS : [document.getElementById("interval").value];
 
   for(let si=0; si<symbolsToProcess.length; si++){
     const symbol = symbolsToProcess[si];
-    try{
-      const kl = await fetchKlines(symbol, interval, 300);
-      if(!kl.length) continue;
-      const closes = kl.map(k=>+k[4]);
-      const last = closes.at(-1)||0;
-      const ema9v = ema(closes,9).at(-1)||0;
-      const ema20v = ema(closes,20).at(-1)||0;
-      const ema50v = ema(closes,50).at(-1)||0;
-      const ema100v = ema(closes,100).at(-1)||0;
-      const ema200v = ema(closes,200).at(-1)||0;
-      const rsiv = rsi(closes,14).at(-1)||0;
-      const {macdLine, signalLine} = macd(closes,12,26,9);
-      const macdv = macdLine.at(-1)||0;
-      const sigv = signalLine.at(-1)||0;
+    const rowColorClass = si%2===0?"even":"odd";
 
-      const strategy = decideStrategy({last, ema20v, ema50v, ema200v, rsiv, macdv, sigv});
-      const correction = correctionBadge({last, ema20v, ema50v, rsiv, macdv, sigv});
-      const last20 = closes.slice(-20);
-      const support = Math.min(...last20);
-      const resistance = Math.max(...last20);
-      const onSupport = withinPct(last,support,0.3)?"✅":"—";
-      const onResistance = withinPct(last,resistance,0.3)?"✅":"—";
-      const breakout = last>resistance*1.002?"✅":"—";
-      const prevRsi = rsi(closes,14).slice(-2)[0]||0;
-      const bounce = withinPct(last,support,0.3) && rsiv>prevRsi?"✅":"—";
-      const ema50Prev = ema(closes,50).slice(-2)[0]||0;
-      const ema200Prev = ema(closes,200).slice(-2)[0]||0;
-      const golden = ema50Prev<ema200Prev && ema50v>ema200v?"✅":"—";
-      const rally = last>ema9v && last>ema20v && rsiv>70 && macdv>sigv?"✅":"—";
+    for(const interval of intervalsToProcess){
+      try{
+        const kl = await fetchKlines(symbol, interval, 300);
+        if(!kl.length) continue;
+        const closes = kl.map(k=>+k[4]);
+        const last = closes.at(-1)||0;
+        const ema9v = ema(closes,9).at(-1)||0;
+        const ema20v = ema(closes,20).at(-1)||0;
+        const ema50v = ema(closes,50).at(-1)||0;
+        const ema100v = ema(closes,100).at(-1)||0;
+        const ema200v = ema(closes,200).at(-1)||0;
+        const rsiv = rsi(closes,14).at(-1)||0;
+        const {macdLine, signalLine} = macd(closes,12,26,9);
+        const macdv = macdLine.at(-1)||0;
+        const sigv = signalLine.at(-1)||0;
 
-      const tr = document.createElement("tr");
-      const cells = [symbol, interval, fmt(last,4), fmt(rsiv,2), fmt(ema9v,4), fmt(ema20v,4),
-        fmt(ema50v,4), fmt(ema100v,4), fmt(ema200v,4), fmt(macdv,6), fmt(sigv,6),
-        fmt(support,4), fmt(resistance,4), onSupport, onResistance, breakout, bounce, golden, rally, strategy, correction];
-      cells.forEach((val,i)=>{
-        const td = document.createElement("td");
-        td.textContent = val;
-        tr.appendChild(td);
-      });
-      tbody.appendChild(tr);
-    }catch(err){
-      const tr = document.createElement("tr");
-      tr.innerHTML = `<td colspan="21" style="color:red">خطا برای ${symbol}: ${err.message}</td>`;
-      tbody.appendChild(tr);
+        const strategy = decideStrategy({last, ema20v, ema50v, ema200v, rsiv, macdv, sigv});
+        const correction = correctionBadge({last, ema20v, ema50v, rsiv, macdv, sigv});
+        const last20 = closes.slice(-20);
+        const support = Math.min(...last20);
+        const resistance = Math.max(...last20);
+        const onSupport = withinPct(last,support,0.3)?"✅":"—";
+        const onResistance = withinPct(last,resistance,0.3)?"✅":"—";
+        const breakout = last>resistance*1.002?"✅":"—";
+        const prevRsi = rsi(closes,14).slice(-2)[0]||0;
+        const bounce = withinPct(last,support,0.3) && rsiv>prevRsi?"✅":"—";
+        const ema50Prev = ema(closes,50).slice(-2)[0]||0;
+        const ema200Prev = ema(closes,200).slice(-2)[0]||0;
+        const golden = ema50Prev<ema200Prev && ema50v>ema200v?"✅":"—";
+        const rally = last>ema9v && last>ema20v && rsiv>70 && macdv>sigv?"✅":"—";
+
+        const tr = document.createElement("tr");
+        const cells = [symbol, interval, fmt(last,4), fmt(rsiv,2), fmt(ema9v,4), fmt(ema20v,4),
+          fmt(ema50v,4), fmt(ema100v,4), fmt(ema200v,4), fmt(macdv,6), fmt(sigv,6),
+          fmt(support,4), fmt(resistance,4), onSupport, onResistance, breakout, bounce, golden, rally, strategy, correction];
+        cells.forEach(val=>{
+          const td=document.createElement("td");
+          td.textContent=val;
+          tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+      }catch(err){
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td colspan="21" style="color:red">خطا برای ${symbol} (${interval}): ${err.message}</td>`;
+        tbody.appendChild(tr);
+      }
     }
   }
   document.getElementById("lastUpdate").textContent = "آخرین بروزرسانی: "+new Date().toLocaleString();
   document.getElementById("refreshBtn").disabled=false;
 }
 
-// ذخیره txt
+// ذخیره در txt
 function saveTableToTxt(){
   const table = document.getElementById("crypto-table");
   let txt = Array.from(table.querySelectorAll("thead th")).map(th=>th.textContent.trim()).join("\t")+"\n";
