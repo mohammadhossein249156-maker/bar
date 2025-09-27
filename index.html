@@ -1,157 +1,102 @@
-<!DOCTYPE html>
-<html lang="fa">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>📊 Crypto Dashboard – Compact & Correction Alert</title>
-<style>
-body{font-family:tahoma,Arial,sans-serif;direction:rtl;background:#f5f7fb;margin:0}
-header{background:#1e88e5;color:#fff;padding:10px;text-align:center;font-size:14px}
-.wrap{max-width:1600px;margin:10px auto;padding:0 8px}
-.controls{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:6px;font-size:12px}
-input,select,button{padding:4px 6px;border:1px solid #cfd8dc;border-radius:6px;font-family:inherit;font-size:12px}
-button{background:#1e88e5;color:#fff;cursor:pointer}
-button:disabled{background:#90caf9;cursor:not-allowed}
-.table-wrap{overflow:auto;background:#fff;border-radius:8px;box-shadow:0 1px 5px rgba(0,0,0,.08)}
-table{border-collapse:collapse;width:100%;font-size:11px}
-th,td{border-bottom:1px solid #eee;padding:4px 6px;text-align:center;white-space:nowrap}
-th{background:#e3f2fd;color:#0d47a1;position:sticky;top:0;z-index:1}
-tr:hover{background:#fafcff}
-.positive{color:#2e7d32;font-weight:600}
-.negative{color:#c62828;font-weight:600}
-.badge{padding:1px 4px;border-radius:4px;font-weight:600;font-size:11px}
-.good{background:#e8f5e9;color:#2e7d32}
-.bad{background:#ffebee;color:#c62828}
-.neutral{background:#eceff1;color:#37474f}
-.correction-ok{background:#e8f5e9;color:#2e7d32;font-weight:600;border-radius:4px;padding:1px 4px;font-size:11px}
-.correction-warning{background:#ffe0b2;color:#ef6c00;font-weight:600;border-radius:4px;padding:1px 4px;font-size:11px}
-.nowrap{white-space:nowrap}
-.ltr{direction:ltr}
-</style>
-</head>
-<body>
-<header>
-<h2>📊 Crypto Dashboard – Compact & Correction Alert</h2>
-<div style="font-size:11px;opacity:.9">منبع داده: Binance (OHLCV) | اندیکاتورها در مرورگر محاسبه می‌شوند</div>
-</header>
+async function buildTable(symbolFilter = null) {
+  const tbody = document.querySelector("#crypto-table tbody");
+  tbody.innerHTML = "";
+  setLoading(true);
 
-<div class="wrap">
-<div class="controls">
-<label>تایم‌فریم:</label>
-<select id="interval">
-<option value="5m">5m</option>
-<option value="15m" selected>15m</option>
-<option value="1h">1h</option>
-<option value="4h">4h</option>
-<option value="1d">1d</option>
-</select>
-<button id="refreshBtn">بروزرسانی</button>
-<input type="text" id="searchBox" class="ltr" placeholder="Search Symbol..." />
-<button id="saveBtn">📥 ذخیره</button>
-<span id="lastUpdate" style="font-size:11px;margin-left:6px"></span>
-</div>
+  // تعیین سمبل‌ها و تایم‌فریم‌ها
+  const symbolsToProcess = symbolFilter ? SYMBOLS.filter(s => s.includes(symbolFilter)) : SYMBOLS;
+  const intervalsToProcess = symbolFilter ? INTERVALS : [document.getElementById("interval").value];
 
-<div class="table-wrap">
-<table id="crypto-table">
-<thead>
-<tr>
-<th>Sym</th><th>TF</th><th>Price</th><th>RSI</th><th>EMA9</th><th>EMA20</th><th>EMA50</th><th>EMA200</th>
-<th>MACD</th><th>Signal</th><th>L</th><th>S</th><th>Entry</th><th>Exit</th>
-<th>Sup</th><th>Res</th><th>Rally</th><th>Bounce</th><th>Str Short</th><th>Str Week</th><th>Str Final</th><th>Corr</th>
-</tr>
-</thead>
-<tbody></tbody>
-</table>
-</div>
-</div>
+  try {
+    for (const symbol of symbolsToProcess) {
+      for (const interval of intervalsToProcess) {
+        try {
+          const kl = await fetchKlines(symbol, interval, 300);
+          if (!kl || kl.length === 0) continue;
 
-<script>
-const SYMBOLS = ["BTCUSDT","ETHUSDT","BNBUSDT","XRPUSDT","SOLUSDT","ADAUSDT","DOGEUSDT","TRXUSDT","MATICUSDT","DOTUSDT","LTCUSDT","AVAXUSDT","LINKUSDT","ATOMUSDT","ETCUSDT","XLMUSDT","FILUSDT","APTUSDT","NEARUSDT","ARBUSDT"];
-const PROXY = url=>`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`;
-const fmt=(n,d=2)=>(n==null||isNaN(n)?"-":Number(n).toLocaleString(undefined,{maximumFractionDigits:d}));
-const withinPct=(price,level,pct=0.3)=>price&&level?Math.abs((price-level)/level)*100<=pct:false;
+          const closes = kl.map(k => +k[4]);
+          const highs = kl.map(k => +k[2]);
+          const lows = kl.map(k => +k[3]);
+          const last = closes.at(-1) || 0;
 
-function ema(values,period){if(!values||values.length===0)return[];const k=2/(period+1);const out=[];let prev=values[0];out.push(prev);for(let i=1;i<values.length;i++){const v=values[i]*k+prev*(1-k);out.push(v);prev=v;}return out;}
-function rsi(values,period=14){if(!values||values.length<period+1)return[];let gains=0,losses=0;for(let i=1;i<=period;i++){const diff=values[i]-values[i-1];diff>=0?gains+=diff:losses-=diff;}let avgGain=gains/period,avgLoss=losses/period;const out=new Array(period).fill(null);for(let i=period+1;i<values.length;i++){const diff=values[i]-values[i-1];const gain=diff>0?diff:0;const loss=diff<0?-diff:0;avgGain=(avgGain*(period-1)+gain)/period;avgLoss=(avgLoss*(period-1)+loss)/period;const rs=avgLoss===0?1000:avgGain/avgLoss;out.push(100-(100/(1+rs)));}return out;}
-function macd(values,fast=12,slow=26,signalPeriod=9){const ef=ema(values,fast);const es=ema(values,slow);const macdLine=ef.map((v,i)=>(es[i]==null?null:(v-es[i])));const start=slow;const macdValid=macdLine.slice(start).filter(v=>v!=null);const signalPart=ema(macdValid,signalPeriod);const signalLine=new Array(start).fill(null).concat(signalPart);return {macdLine,signalLine};}
-function atr(highs,lows,closes,period=14){const trs=[];for(let i=0;i<highs.length;i++){if(i===0){trs.push(highs[i]-lows[i]);continue;}const hl=highs[i]-lows[i];const hc=Math.abs(highs[i]-closes[i-1]);const lc=Math.abs(lows[i]-closes[i-1]);trs.push(Math.max(hl,hc,lc));}if(trs.length<period)return[];let rma=trs.slice(0,period).reduce((a,b)=>a+b,0)/period;const out=new Array(period-1).fill(null);out.push(rma);for(let i=period;i<trs.length;i++){rma=(rma*(period-1)+trs[i])/period;out.push(rma);}return out;}
-async function fetchKlines(symbol,interval="15m",limit=300){const res=await fetch(PROXY(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`));if(!res.ok)throw new Error(`HTTP ${res.status}`);const data=await res.json();if(!Array.isArray(data))throw new Error("Bad payload");return data;}
-async function fetchWeeklyKlines(symbol,limit=100){const res = await fetch(PROXY(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1w&limit=${limit}`));if(!res.ok) throw new Error(`HTTP ${res.status}`);const data = await res.json();if(!Array.isArray(data)) throw new Error("Bad payload");return data;}
+          const ema9v = ema(closes, 9).at(-1) || 0;
+          const ema20v = ema(closes, 20).at(-1) || 0;
+          const ema50v = ema(closes, 50).at(-1) || 0;
+          const ema100v = ema(closes, 100).at(-1) || 0;
+          const ema200v = ema(closes, 200).at(-1) || 0;
 
-function setLoading(state){document.getElementById('refreshBtn').disabled=state;document.getElementById('refreshBtn').textContent=state?'در حال بروزرسانی…':'بروزرسانی';}
+          const rsiv = rsi(closes, 14).at(-1) || 0;
+          const { macdLine, signalLine } = macd(closes, 12, 26, 9);
+          const macdv = macdLine.at(-1) || 0;
+          const sigv = signalLine.at(-1) || 0;
 
-function decideStrategy({last, ema20v, ema50v, ema200v, rsiv, macdv, sigv}){if(!last||!ema20v||!ema50v||!ema200v||!rsiv||!macdv||!sigv)return "-";if(last>ema20v && last>ema50v && ema50v>ema200v && macdv>sigv && rsiv>50)return "هولد";if(last<ema20v && last<ema50v && ema50v<ema200v && macdv<sigv && rsiv<50)return "فروش";return "نوسان";}
+          const atrv = atr(highs, lows, closes, 14).at(-1) || 0;
 
-function combineStrategies(daily,weekly){if(daily==="هولد"&&weekly==="هولد")return "هولد";if(daily==="فروش"&&weekly==="فروش")return "فروش";return "نوسان";}
+          // تصمیم استراتژی
+          const strategy = decideStrategy({ last, ema20v, ema50v, ema200v, rsiv, macdv, sigv });
+          const correction = correctionBadge({ last, ema20v, ema50v, rsiv, macdv, sigv });
 
-function correctionBadge({last, ema20v, ema50v, rsiv, macdv, sigv}){if(!last||!ema20v||!ema50v||!rsiv||!macdv||!sigv)return '<span class="correction-ok">—</span>';const isCorrecting=(last<ema20v && last<ema50v && rsiv<50 && macdv<sigv);return isCorrecting?'<span class="correction-warning" title="اصلاح کوتاه‌مدت">⚠️</span>':'<span class="correction-ok" title="روند سالم">✅</span>';}
+          // شرایط L / S
+          const longCond = last > ema20v && macdv > sigv && rsiv > 50;
+          const shortCond = last < ema20v && macdv < sigv && rsiv < 50;
 
-async function buildTable(symbolFilter=null){
-  const tbody=document.querySelector("#crypto-table tbody");
-  tbody.innerHTML=""; setLoading(true);
-  const symbolsToProcess=symbolFilter?SYMBOLS.filter(s=>s.includes(symbolFilter)):SYMBOLS;
-  const interval=document.getElementById("interval").value;
+          // سطوح حمایت / مقاومت
+          const last20 = closes.slice(-20);
+          const support = Math.min(...last20);
+          const resistance = Math.max(...last20);
+          const onSupport = withinPct(last, support, 0.3) ? "✅" : "—";
+          const onResistance = withinPct(last, resistance, 0.3) ? "✅" : "—";
+          const breakout = last > resistance * 1.002 ? "✅" : "—";
 
-  const rows=await Promise.all(symbolsToProcess.map(async symbol=>{
-    try{
-      const kl=await fetchKlines(symbol,interval,300);
-      const klW=await fetchWeeklyKlines(symbol,100);
-      const closes=kl.map(k=>+k[4]),highs=kl.map(k=>+k[2]),lows=kl.map(k=>+k[3]),last=closes.at(-1)||0;
-      const closesW=klW.map(k=>+k[4]),lastW=closesW.at(-1)||0;
+          const prevRsi = rsi(closes, 14).slice(-2)[0] || 0;
+          const bounce = withinPct(last, support, 0.3) && rsiv > prevRsi ? "✅" : "—";
 
-      const ema9v=ema(closes,9).at(-1)||0;
-      const ema20v=ema(closes,20).at(-1)||0;
-      const ema50v=ema(closes,50).at(-1)||0;
-      const ema200v=ema(closes,200).at(-1)||0;
-      const rsiv=rsi(closes,14).at(-1)||0;
-      const {macdLine,signalLine}=macd(closes,12,26,9);
-      const macdv=macdLine.at(-1)||0;
-      const sigv=signalLine.at(-1)||0;
+          const ema50Prev = ema(closes, 50).slice(-2)[0] || 0;
+          const ema200Prev = ema(closes, 200).slice(-2)[0] || 0;
+          const golden = ema50Prev < ema200Prev && ema50v > ema200v ? "✅" : "—";
+          const rally = last > ema9v && last > ema20v && rsiv > 70 && macdv > sigv ? "✅" : "—";
 
-      const ema20vW=ema(closesW,20).at(-1)||0;
-      const ema50vW=ema(closesW,50).at(-1)||0;
-      const ema200vW=ema(closesW,200).at(-1)||0;
-      const rsivW=rsi(closesW,14).at(-1)||0;
-      const {macdLine:macdLineW,signalLine:signalLineW}=macd(closesW,12,26,9);
-      const macdvW=macdLineW.at(-1)||0;
-      const sigvW=signalLineW.at(-1)||0;
-
-      const strategyShort=decideStrategy({last,ema20v,ema50v,ema200v,rsiv,macdv,sigv});
-      const strategyWeek=decideStrategy({last:lastW,ema20v:ema20vW,ema50v:ema50vW,ema200v:ema200vW,rsiv:rsivW,macdv:macdvW,sigv:sigvW});
-      const finalStrategy=combineStrategies(strategyShort,strategyWeek);
-      const correction=correctionBadge({last,ema20v,ema50v,rsiv,macdv,sigv});
-
-      const support=Math.min(...closes.slice(-20)),resistance=Math.max(...closes.slice(-20));
-      const rally=(last>ema9v && last>ema20v && rsiv>70 && macdv>sigv)?"✅":"—";
-      const bounce=(withinPct(last,support,0.3)&&rsiv>rsi(closes,14).slice(-2)[0]?"✅":"—");
-
-      return `<tr>
-<td>${symbol}</td><td>${interval}</td><td>${fmt(last,4)}</td><td>${fmt(rsiv,2)}</td><td>${fmt(ema9v,4)}</td>
-<td>${fmt(ema20v,4)}</td><td>${fmt(ema50v,4)}</td><td>${fmt(ema200v,4)}</td>
-<td>${fmt(macdv,6)}</td><td>${fmt(sigv,6)}</td><td>${strategyShort==="هولد"?"L":""}</td><td>${strategyShort==="فروش"?"S":""}</td>
-<td>-</td><td>-</td><td>${fmt(support,4)}</td><td>${fmt(resistance,4)}</td>
-<td>${rally}</td><td>${bounce}</td><td>${strategyShort}</td><td>${strategyWeek}</td><td>${finalStrategy}</td>
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+<td class="nowrap">${symbol}</td>
+<td class="nowrap">${interval}</td>
+<td>${fmt(last, 4)}</td>
+<td>${fmt(rsiv, 2)}</td>
+<td>${fmt(ema9v, 4)}</td>
+<td>${fmt(ema20v, 4)}</td>
+<td>${fmt(ema50v, 4)}</td>
+<td>${fmt(ema100v, 4)}</td>
+<td>${fmt(ema200v, 4)}</td>
+<td>${fmt(macdv, 6)}</td>
+<td>${fmt(sigv, 6)}</td>
+<td>${longCond ? "L" : ""}</td>
+<td>${shortCond ? "S" : ""}</td>
+<td>-</td>
+<td>${longCond ? "✅" : "—"}</td>
+<td>${shortCond ? "⚠" : "—"}</td>
+<td>-</td>
+<td>-</td>
+<td>${fmt(support, 4)}</td>
+<td>${fmt(resistance, 4)}</td>
+<td>${onSupport}</td>
+<td>${onResistance}</td>
+<td>${breakout}</td>
+<td>${bounce}</td>
+<td>${golden}</td>
+<td>${rally}</td>
+<td>${strategy}</td>
 <td>${correction}</td>
-</tr>`;
-    }catch(err){return `<tr><td colspan="22" class="negative">خطا برای ${symbol}: ${err.message}</td></tr>`;}
-  }));
-
-  tbody.innerHTML=rows.join("");
-  document.getElementById("lastUpdate").textContent="آخرین بروزرسانی: "+new Date().toLocaleString();
-  setLoading(false);
+`;
+          tbody.appendChild(tr);
+        } catch (err) {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `<td colspan="27" class="negative">خطا برای ${symbol} (${interval}): ${err.message}</td>`;
+          tbody.appendChild(tr);
+        }
+      }
+    }
+  } finally {
+    document.getElementById("lastUpdate").textContent = "آخرین بروزرسانی: " + new Date().toLocaleString();
+    setLoading(false);
+  }
 }
-
-function saveTableToTxt(){
-  const table=document.getElementById("crypto-table");let txt="";
-  txt+=Array.from(table.querySelectorAll("thead th")).map(th=>th.textContent).join("\t")+"\n";
-  table.querySelectorAll("tbody tr").forEach(row=>{txt+=Array.from(row.querySelectorAll("td")).map(td=>td.textContent).join("\t")+"\n";});
-  const blob=new Blob([txt],{type:"text/plain;charset=utf-8"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="crypto_data.txt";a.click();
-}
-
-document.getElementById('refreshBtn').addEventListener('click',()=>{const s=document.getElementById('searchBox').value.trim().toUpperCase();buildTable(s||null);});
-document.getElementById('interval').addEventListener('change',()=>buildTable());
-document.getElementById('saveBtn').addEventListener('click',saveTableToTxt);
-window.addEventListener('load',()=>buildTable());
-</script>
-</body>
-</html>
