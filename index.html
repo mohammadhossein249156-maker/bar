@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>📊 Crypto Dashboard – با قابلیت ذخیره</title>
+<title>📊 Crypto Dashboard – Fixed Search & Update + Save + Strategy</title>
 <style>
 body{font-family:tahoma,Arial,sans-serif;direction:rtl;background:#f5f7fb;margin:0}
 header{background:#1e88e5;color:#fff;padding:14px 10px;text-align:center}
@@ -26,12 +26,11 @@ tr:hover{background:#fafcff}
 .neutral{background:#eceff1;color:#37474f}
 .nowrap{white-space:nowrap}
 .ltr{direction:ltr}
-.save-btn{cursor:pointer;background:#43a047;color:#fff;border:none;padding:4px 8px;border-radius:6px;font-size:12px}
 </style>
 </head>
 <body>
 <header>
-<h2>📊 Crypto Dashboard – Fixed Search & Update + Save</h2>
+<h2>📊 Crypto Dashboard – Fixed Search & Update + Strategy</h2>
 <div style="font-size:12px;opacity:.9">منبع داده: Binance (OHLCV) از طریق Codetabs Proxy | اندیکاتورها در مرورگر محاسبه می‌شوند</div>
 </header>
 
@@ -47,7 +46,7 @@ tr:hover{background:#fafcff}
 </select>
 <button id="refreshBtn">بروزرسانی</button>
 <input type="text" id="searchBox" class="ltr" placeholder="Search Symbol..." />
-<button id="saveAllBtn">📥 ذخیره کل جدول</button>
+<button id="saveBtn">📥 ذخیره در نوت‌پد</button>
 <span id="lastUpdate" class="note"></span>
 </div>
 
@@ -55,7 +54,7 @@ tr:hover{background:#fafcff}
 <table id="crypto-table">
 <thead>
 <tr>
-<th>Symbol</th><th>Interval</th><th>Price</th><th>RSI(14)</th><th>EMA9</th><th>EMA20</th><th>EMA50</th><th>EMA100</th><th>EMA200</th><th>MACD</th><th>Signal</th><th>L</th><th>S</th><th>PP</th><th>Long</th><th>Short</th><th>Entry</th><th>Exit (TP/SL)</th><th>Support</th><th>Resistance</th><th>تثبیت روی حمایت؟</th><th>تثبیت روی مقاومت؟</th><th>Breakout</th><th>Bounce</th><th>Golden Cross</th><th>Rally</th><th>ذخیره</th>
+<th>Symbol</th><th>Interval</th><th>Price</th><th>RSI(14)</th><th>EMA9</th><th>EMA20</th><th>EMA50</th><th>EMA100</th><th>EMA200</th><th>MACD</th><th>Signal</th><th>L</th><th>S</th><th>PP</th><th>Long</th><th>Short</th><th>Entry</th><th>Exit (TP/SL)</th><th>Support</th><th>Resistance</th><th>تثبیت روی حمایت؟</th><th>تثبیت روی مقاومت؟</th><th>Breakout</th><th>Bounce</th><th>Golden Cross</th><th>Rally</th><th>استراتژی</th>
 </tr>
 </thead>
 <tbody></tbody>
@@ -96,35 +95,18 @@ async function fetchDailyPivot(symbol){
 
 function setLoading(state){document.getElementById('refreshBtn').disabled=state;document.getElementById('refreshBtn').textContent=state?'در حال بروزرسانی…':'بروزرسانی';}
 
-function exportRowToTxt(symbol, row){
-  const cells=row.querySelectorAll("td");
-  let content=`تحلیل ${symbol}\n---------------------------------\n`;
-  cells.forEach((c,i)=>{if(i<cells.length-1)content+=`${c.innerText}\t`;});
-  content+=`\nتاریخ: ${new Date().toLocaleString()}`;
-  const blob=new Blob([content],{type:"text/plain;charset=utf-8"});
-  const link=document.createElement("a");
-  link.href=URL.createObjectURL(blob);
-  link.download=`analysis-${symbol}.txt`;
-  link.click();
-}
-
-function exportAllTable(){
-  const rows=document.querySelectorAll("#crypto-table tbody tr");
-  let content="تحلیل کل جدول\n=================================\n";
-  rows.forEach(r=>{
-    content+=r.innerText+"\n";
-  });
-  content+=`\nتاریخ: ${new Date().toLocaleString()}`;
-  const blob=new Blob([content],{type:"text/plain;charset=utf-8"});
-  const link=document.createElement("a");
-  link.href=URL.createObjectURL(blob);
-  link.download="crypto-analysis.txt";
-  link.click();
+// 🔹 تابع تصمیم‌گیری استراتژی
+function decideStrategy({last, ema20v, ema50v, ema200v, rsiv, macdv, sigv}) {
+    if(last == null || ema20v == null || ema50v == null || ema200v == null || rsiv == null || macdv == null || sigv == null)
+        return "-";
+    if(last > ema20v && last > ema50v && ema50v > ema200v && macdv > sigv && rsiv > 50) return "هولد";
+    if(last < ema20v && last < ema50v && ema50v < ema200v && macdv < sigv && rsiv < 50) return "فروش";
+    return "نوسان‌گیری";
 }
 
 async function buildTable(symbolFilter=null, allIntervals=false){
   const tbody=document.querySelector("#crypto-table tbody");
-  if(symbolFilter) tbody.innerHTML="";
+  if(symbolFilter) tbody.innerHTML=""; 
   setLoading(true);
 
   const selectedInterval=document.getElementById("interval").value;
@@ -160,6 +142,9 @@ async function buildTable(symbolFilter=null, allIntervals=false){
           const longBadge=longCond?'<span class="badge good">✅</span>':'<span class="badge neutral">—</span>';
           const shortBadge=shortCond?'<span class="badge bad">⚠</span>':'<span class="badge neutral">—</span>';
 
+          // 🔹 تصمیم نهایی
+          const strategy = decideStrategy({last, ema20v, ema50v, ema200v, rsiv, macdv, sigv});
+
           const tr=document.createElement("tr");
           tr.innerHTML=`
 <td class="nowrap">${symbol}</td>
@@ -188,7 +173,7 @@ async function buildTable(symbolFilter=null, allIntervals=false){
 <td>${bounce}</td>
 <td>${golden}</td>
 <td>${rally}</td>
-<td><button class="save-btn" onclick="exportRowToTxt('${symbol}',this.closest('tr'))">📥</button></td>`;
+<td>${strategy}</td>`;
           tbody.appendChild(tr);
         }catch(err){
           const tr=document.createElement("tr");
@@ -204,18 +189,36 @@ async function buildTable(symbolFilter=null, allIntervals=false){
   }
 }
 
-// UI
+// 🔽 ذخیره جدول در فایل txt
+function saveTableToTxt() {
+  const table = document.getElementById("crypto-table");
+  let txt = "";
+  const headers = Array.from(table.querySelectorAll("thead th")).map(th => th.textContent.trim()).join("\t");
+  txt += headers + "\n";
+  const rows = table.querySelectorAll("tbody tr");
+  rows.forEach(row => {
+    const cells = Array.from(row.querySelectorAll("td")).map(td => td.textContent.trim()).join("\t");
+    txt += cells + "\n";
+  });
+  const blob = new Blob([txt], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "crypto_data.txt";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 document.getElementById('refreshBtn').addEventListener('click',()=>{
   const symbolSearch=document.getElementById('searchBox').value.trim().toUpperCase();
   if(symbolSearch){
-    buildTable(symbolSearch,true);
+    buildTable(symbolSearch,true); 
   }else{
-    buildTable();
+    buildTable(); 
   }
 });
-
 document.getElementById('interval').addEventListener('change',()=>buildTable());
-document.getElementById('saveAllBtn').addEventListener('click',()=>exportAllTable());
+document.getElementById('saveBtn').addEventListener('click', saveTableToTxt);
 window.addEventListener('load',()=>buildTable());
 </script>
 </body>
