@@ -3,28 +3,28 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>📊 Crypto Dashboard – نسخه ساده</title>
+<title>📊 Crypto Dashboard – Compact</title>
 <style>
 body{font-family:tahoma,Arial,sans-serif;direction:rtl;background:#f5f7fb;margin:0}
-header{background:#1e88e5;color:#fff;padding:12px 8px;text-align:center;font-size:14px}
+header{background:#1e88e5;color:#fff;padding:12px;text-align:center}
 .wrap{max-width:1500px;margin:16px auto;padding:0 8px}
 .controls{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
-input,select,button{padding:4px 6px;border:1px solid #cfd8dc;border-radius:6px;font-family:inherit;font-size:12px}
+input,select,button{padding:6px 8px;border:1px solid #cfd8dc;border-radius:6px;font-family:inherit;font-size:12px}
 button{background:#1e88e5;color:#fff;cursor:pointer}
 button:disabled{background:#90caf9;cursor:not-allowed}
-.note{font-size:12px;color:#546e7a;margin-top:4px}
-.table-wrap{overflow:auto;background:#fff;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.08)}
-table{border-collapse:collapse;width:100%;font-size:11px}
-th,td{border-bottom:1px solid #eee;padding:3px 4px;text-align:center;white-space:nowrap}
+.note{font-size:11px;color:#546e7a;margin-top:4px}
+.table-wrap{overflow:auto;background:#fff;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+table{border-collapse:collapse;width:100%;font-size:12px}
+th,td{border-bottom:1px solid #eee;padding:4px 6px;text-align:center;white-space:nowrap}
 th{background:#e3f2fd;color:#0d47a1;position:sticky;top:0;z-index:1}
 tr:hover{background:#fafcff}
-.correction-ok{background:#e8f5e9;color:#2e7d32;font-weight:600;border-radius:6px;padding:2px 4px;font-size:11px}
-.correction-warning{background:#ffe0b2;color:#ef6c00;font-weight:600;border-radius:6px;padding:2px 4px;font-size:11px}
+.correction-ok{background:#e8f5e9;color:#2e7d32;font-weight:600;border-radius:4px;padding:2px 4px}
+.correction-warning{background:#ffe0b2;color:#ef6c00;font-weight:600;border-radius:4px;padding:2px 4px}
 </style>
 </head>
 <body>
 <header>
-<h2>📊 Crypto Dashboard – نسخه ساده</h2>
+<h2>📊 Crypto Dashboard – Compact</h2>
 <div style="font-size:11px;opacity:.9">منبع داده: Binance (OHLCV) | اندیکاتورها در مرورگر محاسبه می‌شوند</div>
 </header>
 
@@ -39,7 +39,7 @@ tr:hover{background:#fafcff}
 <option value="1d">1d</option>
 </select>
 <button id="refreshBtn">بروزرسانی</button>
-<input type="text" id="searchBox" class="ltr" placeholder="Search Symbol..." />
+<input type="text" id="searchBox" placeholder="Search Symbol..." />
 <button id="saveBtn">📥 ذخیره در نوت‌پد</button>
 <span id="lastUpdate" class="note"></span>
 </div>
@@ -48,70 +48,96 @@ tr:hover{background:#fafcff}
 <table id="crypto-table">
 <thead>
 <tr>
-<th>Symbol</th><th>Interval</th><th>Price</th><th>RSI(14)</th>
-<th>EMA9</th><th>EMA20</th><th>EMA50</th><th>EMA100</th><th>EMA200</th>
-<th>MACD</th><th>Signal</th>
-<th>Support</th><th>Resistance</th><th>On Support</th><th>On Resistance</th>
-<th>Breakout</th><th>Bounce</th><th>Golden Cross</th><th>Rally</th>
-<th>Strategy</th><th>Correction</th>
+<th>Symbol</th><th>Interval</th><th>Price</th><th>RSI</th><th>EMA9</th><th>EMA20</th><th>EMA50</th><th>EMA100</th><th>EMA200</th>
+<th>MACD</th><th>Signal</th><th>Support</th><th>Resistance</th><th>OnSupport</th><th>OnResistance</th>
+<th>Breakout</th><th>Bounce</th><th>Golden</th><th>Rally</th><th>Strategy</th><th>Correction</th>
 </tr>
 </thead>
 <tbody></tbody>
 </table>
 </div>
-
 <div class="note">نکته: این ابزار صرفاً آموزشی است و سیگنال قطعی معامله محسوب نمی‌شود.</div>
 </div>
 
 <script>
-// همان کدهای قبلی: EMA, RSI, MACD, ATR و توابع محاسباتی
-// ... توابع ema(), rsi(), macd(), atr(), withinPct(), fetchKlines(), decideStrategy(), correctionBadge() ...
+const SYMBOLS = ["BTCUSDT","ETHUSDT","BNBUSDT","XRPUSDT","SOLUSDT","ADAUSDT","DOGEUSDT","TRXUSDT","MATICUSDT","DOTUSDT","LTCUSDT","AVAXUSDT","LINKUSDT","ATOMUSDT","ETCUSDT","XLMUSDT","FILUSDT","APTUSDT","NEARUSDT","ARBUSDT"];
+const INTERVALS = ["5m","15m","1h","4h","1d"];
+const PROXY = url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`;
 
-async function buildTable(symbolFilter = null){
-  const tbody = document.querySelector("#crypto-table tbody");
-  tbody.innerHTML = "";
-  setLoading(true);
-  const symbolsToProcess = symbolFilter ? SYMBOLS.filter(s => s.includes(symbolFilter)) : SYMBOLS;
-  const intervalsToProcess = symbolFilter ? INTERVALS : [document.getElementById("interval").value];
+const fmt = (n,d=2) => (n==null||isNaN(n)?"-":Number(n).toLocaleString(undefined,{maximumFractionDigits:d}));
+const withinPct = (price, level, pct=0.3) => price && level ? Math.abs((price-level)/level)*100<=pct : false;
 
-  try{
+// 🔹 محاسبات اندیکاتور
+function ema(values, period){ if(!values||values.length===0) return []; const k=2/(period+1); const out=[]; let prev=values[0]; out.push(prev); for(let i=1;i<values.length;i++){const v=values[i]*k+prev*(1-k);out.push(v); prev=v;} return out;}
+function rsi(values, period=14){if(!values||values.length<period+1)return[];let gains=0,losses=0;for(let i=1;i<=period;i++){const diff=values[i]-values[i-1];diff>=0?gains+=diff:losses-=diff;}let avgGain=gains/period,avgLoss=losses/period;const out=new Array(period).fill(null);for(let i=period+1;i<values.length;i++){const diff=values[i]-values[i-1];const gain=diff>0?diff:0;const loss=diff<0?-diff:0;avgGain=(avgGain*(period-1)+gain)/period;avgLoss=(avgLoss*(period-1)+loss)/period;const rs=avgLoss===0?1000:avgGain/avgLoss;out.push(100-(100/(1+rs)));}return out;}
+function macd(values, fast=12, slow=26, signalPeriod=9){const ef=ema(values,fast); const es=ema(values,slow); const macdLine=ef.map((v,i)=>(es[i]==null?null:(v-es[i]))); const start=slow; const macdValid=macdLine.slice(start).filter(v=>v!=null); const signalPart=ema(macdValid,signalPeriod); return {macdLine, signalLine:new Array(start).fill(null).concat(signalPart)};}
+
+// 🔹 fetch داده‌ها
+async function fetchKlines(symbol,interval="15m",limit=300){
+    const res = await fetch(PROXY(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`));
+    const data = await res.json();
+    return Array.isArray(data)?data:[];
+}
+
+// 🔹 تصمیم‌گیری استراتژی
+function decideStrategy({last, ema20v, ema50v, ema200v, rsiv, macdv, sigv}) {
+    if(last>ema20v && last>ema50v && ema50v>ema200v && macdv>sigv && rsiv>50) return "هولد";
+    if(last<ema20v && last<ema50v && ema50v<ema200v && macdv<sigv && rsiv<50) return "فروش";
+    return "نوسان‌گیری";
+}
+
+// 🔹 اصلاح کوتاه‌مدت
+function correctionBadge({last, ema20v, ema50v, rsiv, macdv, sigv}){
+    if(last<ema20v && last<ema50v && rsiv<50 && macdv<sigv) return '<span class="correction-warning">⚠️</span>';
+    return '<span class="correction-ok">✅</span>';
+}
+
+// 🔹 بارگذاری جدول
+async function buildTable(symbolFilter=null){
+    const tbody = document.querySelector("#crypto-table tbody");
+    tbody.innerHTML="";
+    document.getElementById("refreshBtn").disabled=true;
+
+    const symbolsToProcess = symbolFilter ? SYMBOLS.filter(s=>s.includes(symbolFilter)) : SYMBOLS;
+    const intervalsToProcess = symbolFilter ? INTERVALS : [document.getElementById("interval").value];
+
     for(const symbol of symbolsToProcess){
-      for(const interval of intervalsToProcess){
-        try{
-          const kl = await fetchKlines(symbol, interval, 300);
-          if(!kl || kl.length===0) continue;
-          const closes = kl.map(k=>+k[4]);
-          const highs = kl.map(k=>+k[2]);
-          const lows = kl.map(k=>+k[3]);
-          const last = closes.at(-1) || 0;
-          const ema9v = ema(closes,9).at(-1) || 0;
-          const ema20v = ema(closes,20).at(-1) || 0;
-          const ema50v = ema(closes,50).at(-1) || 0;
-          const ema100v = ema(closes,100).at(-1) || 0;
-          const ema200v = ema(closes,200).at(-1) || 0;
-          const rsiv = rsi(closes,14).at(-1) || 0;
-          const {macdLine, signalLine} = macd(closes,12,26,9);
-          const macdv = macdLine.at(-1) || 0;
-          const sigv = signalLine.at(-1) || 0;
+        for(const interval of intervalsToProcess){
+            try{
+                const kl = await fetchKlines(symbol, interval, 300);
+                if(!kl.length) continue;
+                const closes = kl.map(k=>+k[4]);
+                const highs = kl.map(k=>+k[2]);
+                const lows = kl.map(k=>+k[3]);
+                const last = closes.at(-1)||0;
+                const ema9v = ema(closes,9).at(-1)||0;
+                const ema20v = ema(closes,20).at(-1)||0;
+                const ema50v = ema(closes,50).at(-1)||0;
+                const ema100v = ema(closes,100).at(-1)||0;
+                const ema200v = ema(closes,200).at(-1)||0;
+                const rsiv = rsi(closes,14).at(-1)||0;
+                const {macdLine, signalLine} = macd(closes,12,26,9);
+                const macdv = macdLine.at(-1)||0;
+                const sigv = signalLine.at(-1)||0;
 
-          const strategy = decideStrategy({last, ema20v, ema50v, ema200v, rsiv, macdv, sigv});
-          const correction = correctionBadge({last, ema20v, ema50v, rsiv, macdv, sigv});
+                const strategy = decideStrategy({last, ema20v, ema50v, ema200v, rsiv, macdv, sigv});
+                const correction = correctionBadge({last, ema20v, ema50v, rsiv, macdv, sigv});
 
-          const last20 = closes.slice(-20);
-          const support = Math.min(...last20);
-          const resistance = Math.max(...last20);
-          const onSupport = withinPct(last,support,0.3)?"✅":"—";
-          const onResistance = withinPct(last,resistance,0.3)?"✅":"—";
-          const breakout = last>resistance*1.002?"✅":"—";
-          const prevRsi = rsi(closes,14).slice(-2)[0]||0;
-          const bounce = withinPct(last,support,0.3) && rsiv>prevRsi?"✅":"—";
-          const ema50Prev = ema(closes,50).slice(-2)[0]||0;
-          const ema200Prev = ema(closes,200).slice(-2)[0]||0;
-          const golden = ema50Prev<ema200Prev && ema50v>ema200v?"✅":"—";
-          const rally = last>ema9v && last>ema20v && rsiv>70 && macdv>sigv?"✅":"—";
+                const last20 = closes.slice(-20);
+                const support = Math.min(...last20);
+                const resistance = Math.max(...last20);
+                const onSupport = withinPct(last, support, 0.3)?"✅":"—";
+                const onResistance = withinPct(last, resistance,0.3)?"✅":"—";
+                const breakout = last>resistance*1.002?"✅":"—";
+                const prevRsi = rsi(closes,14).slice(-2)[0]||0;
+                const bounce = withinPct(last,support,0.3) && rsiv>prevRsi?"✅":"—";
+                const ema50Prev = ema(closes,50).slice(-2)[0]||0;
+                const ema200Prev = ema(closes,200).slice(-2)[0]||0;
+                const golden = ema50Prev<ema200Prev && ema50v>ema200v?"✅":"—";
+                const rally = last>ema9v && last>ema20v && rsiv>70 && macdv>sigv?"✅":"—";
 
-          const tr = document.createElement("tr");
-          tr.innerHTML = `
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
 <td>${symbol}</td>
 <td>${interval}</td>
 <td>${fmt(last,4)}</td>
@@ -133,42 +159,43 @@ async function buildTable(symbolFilter = null){
 <td>${rally}</td>
 <td>${strategy}</td>
 <td>${correction}</td>
-          `;
-          tbody.appendChild(tr);
-        }catch(err){
-          const tr = document.createElement("tr");
-          tr.innerHTML = `<td colspan="21">خطا برای ${symbol} (${interval}): ${err.message}</td>`;
-          tbody.appendChild(tr);
+                `;
+                tbody.appendChild(tr);
+            }catch(err){
+                const tr = document.createElement("tr");
+                tr.innerHTML = `<td colspan="21" class="negative">خطا برای ${symbol} (${interval}): ${err.message}</td>`;
+                tbody.appendChild(tr);
+            }
         }
-      }
     }
-  }finally{
-    document.getElementById("lastUpdate").textContent="آخرین بروزرسانی: "+new Date().toLocaleString();
-    setLoading(false);
-  }
+
+    document.getElementById("lastUpdate").textContent = "آخرین بروزرسانی: " + new Date().toLocaleString();
+    document.getElementById("refreshBtn").disabled=false;
 }
 
-// ذخیره در نوت‌پد
-function saveTableToTxt() {
-  const table = document.getElementById("crypto-table");
-  let txt = "";
-  const headers = Array.from(table.querySelectorAll("thead th")).map(th=>th.textContent.trim()).join("\t");
-  txt += headers + "\n";
-  table.querySelectorAll("tbody tr").forEach(row=>{
-    const cells = Array.from(row.querySelectorAll("td")).map(td=>td.textContent.trim()).join("\t");
-    txt += cells+"\n";
-  });
-  const blob = new Blob([txt], {type:"text/plain;charset=utf-8"});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "crypto_data.txt";
-  a.click();
-  URL.revokeObjectURL(url);
+// 🔹 ذخیره در فایل txt
+function saveTableToTxt(){
+    const table = document.getElementById("crypto-table");
+    let txt = "";
+    const headers = Array.from(table.querySelectorAll("thead th")).map(th=>th.textContent.trim()).join("\t");
+    txt += headers+"\n";
+    table.querySelectorAll("tbody tr").forEach(row=>{
+        const cells = Array.from(row.querySelectorAll("td")).map(td=>td.textContent.trim()).join("\t");
+        txt+=cells+"\n";
+    });
+    const blob = new Blob([txt],{type:"text/plain;charset=utf-8"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href=url; a.download="crypto_data.txt"; a.click();
+    URL.revokeObjectURL(url);
 }
 
-document.getElementById('refreshBtn').addEventListener('click',()=>buildTable(document.getElementById('searchBox').value.trim().toUpperCase()));
-document.getElementById('saveBtn').addEventListener('click',saveTableToTxt);
+// 🔹 Event Listeners
+document.getElementById("refreshBtn").addEventListener("click",()=>buildTable());
+document.getElementById("searchBox").addEventListener("change",(e)=>buildTable(e.target.value.toUpperCase()));
+document.getElementById("saveBtn").addEventListener("click",saveTableToTxt);
+
+// بارگذاری اولیه
+buildTable();
 </script>
 </body>
 </html>
