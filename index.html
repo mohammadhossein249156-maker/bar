@@ -15,13 +15,7 @@ button:disabled{background:#90caf9;cursor:not-allowed}
 table{border-collapse:collapse;width:100%;font-size:11px}
 th,td{border:1px solid #ddd;padding:3px 5px;text-align:center;white-space:nowrap}
 th{position:sticky;top:0;z-index:2;color:#fff;}
-td:first-child, th:first-child{
-    position: sticky;
-    left: 0;
-    background: #fdfdfd;
-    font-weight: bold;
-    z-index:3;
-}
+td:first-child, th:first-child{position: sticky; left: 0; background: #fdfdfd; font-weight: bold; z-index:3;}
 tr.row-0{background:#fef9f7;}
 tr.row-1{background:#f7f7ff;}
 tr.row-2{background:#f7fff7;}
@@ -29,20 +23,15 @@ tr.row-3{background:#fff7f7;}
 tr.row-4{background:#f7f7f7;}
 tr:hover{background:#cbd5e1;}
 thead th{background:#1976d2}
-@media(max-width:768px){
-  table{font-size:10px;}
-  th:nth-child(8), td:nth-child(8),
-  th:nth-child(9), td:nth-child(9),
-  th:nth-child(10), td:nth-child(10),
-  th:nth-child(11), td:nth-child(11)
-  {display:none;}
-}
-@media(max-width:480px){
-  table{font-size:9px;}
-  th,td{padding:1px 2px;}
-}
+@media(max-width:768px){table{font-size:10px;}}
+@media(max-width:480px){table{font-size:9px;} th,td{padding:1px 2px;}}
 td.macd-positive{color:green;}
 td.macd-negative{color:red;}
+/* استایل Dropdown ستون‌ها */
+.dropdown{position:relative;display:inline-block;}
+.dropdown-btn{background:#1e88e5;color:#fff;padding:4px 6px;border:none;border-radius:4px;cursor:pointer;font-size:11px}
+.dropdown-content{display:none;position:absolute;right:0;background:#fff;border:1px solid #ccc;min-width:180px;max-height:200px;overflow-y:auto;z-index:10;padding:5px;border-radius:4px;box-shadow:0 2px 6px rgba(0,0,0,0.2);}
+.dropdown-content label{display:block;margin:2px 0;font-size:11px;}
 </style>
 </head>
 <body>
@@ -64,11 +53,12 @@ td.macd-negative{color:red;}
 <input type="text" id="searchBox" placeholder="Search Symbol..." />
 <button id="saveBtn">📥 ذخیره در نوت‌پد</button>
 <span id="lastUpdate" style="font-size:10px;color:#546e7a;margin-left:5px;"></span>
-</div>
 
-<!-- پنل کنترل ستون‌ها -->
-<div id="column-controls" style="font-size:11px;margin:5px 10px;">
-  <strong>نمایش ستون‌ها:</strong>
+<!-- Dropdown ستون‌ها -->
+<div class="dropdown">
+  <button class="dropdown-btn" id="columnDropdownBtn">⚙️ ستون‌ها</button>
+  <div class="dropdown-content" id="columnDropdown"></div>
+</div>
 </div>
 
 <div class="table-wrap">
@@ -114,18 +104,13 @@ function correctionBadge({last, ema20v, ema50v, rsiv, macdv, sigv}) {
     return (last<ema20v && last<ema50v && rsiv<50 && macdv<sigv)?'⚠️':'✅';
 }
 
-// تابع جدید ریسک/فرصت
 function riskOpportunity({last, ema20v, ema50v, ema200v, rsiv, macdv, sigv, onSupport, onResistance, breakout, bounce}) {
     if(last>ema20v && last>ema50v && ema50v>ema200v && macdv>sigv){
-        if(onSupport==="✅" || breakout==="✅"){
-            return "⚡ فرصت قوی – خرید مناسب";
-        }
+        if(onSupport==="✅" || breakout==="✅"){ return "⚡ فرصت قوی – خرید مناسب"; }
         return "✅ فرصت متوسط – روند صعودی";
     }
     if(last<ema20v && last<ema50v && ema50v<ema200v && macdv<sigv){
-        if(onResistance==="✅"){
-            return "⚠️ ریسک بالا – احتمال ریزش / صبر کنید";
-        }
+        if(onResistance==="✅"){ return "⚠️ ریسک بالا – احتمال ریزش / صبر کنید"; }
         return "⚠️ ریسک متوسط – مراقب باشید";
     }
     return "🟡 نوسان – صبر یا معامله کوچک";
@@ -166,9 +151,7 @@ fmt(support,4), fmt(resistance,4), onSupport, onResistance, breakout, bounce, go
 cells.forEach((val, idx)=>{ 
     const td=document.createElement("td"); 
     td.textContent=val; 
-    if(idx===9 || idx===10){ 
-        td.className = macdv>=sigv ? "macd-positive" : "macd-negative"; 
-    }
+    if(idx===9 || idx===10){ td.className = macdv>=sigv ? "macd-positive" : "macd-negative"; }
     tr.appendChild(td); 
 });
 tbody.appendChild(tr);
@@ -184,17 +167,14 @@ table.querySelectorAll("tbody tr").forEach(row=>{txt+=Array.from(row.querySelect
 const blob=new Blob([txt],{type:"text/plain;charset=utf-8"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="crypto_data.txt";a.click();URL.revokeObjectURL(a.href);
 }
 
-// ایجاد کنترل ستون‌ها
+// ایجاد Dropdown ستون‌ها
 const tableElem = document.getElementById("crypto-table");
 const columns = Array.from(tableElem.querySelectorAll("thead th")).map(th => th.textContent.trim());
-const columnControls = document.getElementById("column-controls");
+const columnDropdown = document.getElementById("columnDropdown");
 columns.forEach((col, idx) => {
     const label = document.createElement("label");
-    label.style.marginRight = "5px";
     const cb = document.createElement("input");
-    cb.type = "checkbox";
-    cb.checked = true;
-    cb.dataset.colIndex = idx;
+    cb.type = "checkbox"; cb.checked = true; cb.dataset.colIndex = idx;
     cb.addEventListener("change", (e) => {
         const index = e.target.dataset.colIndex;
         const show = e.target.checked;
@@ -203,7 +183,11 @@ columns.forEach((col, idx) => {
     });
     label.appendChild(cb);
     label.appendChild(document.createTextNode(" " + col));
-    columnControls.appendChild(label);
+    columnDropdown.appendChild(label);
+});
+
+document.getElementById("columnDropdownBtn").addEventListener("click", ()=> {
+    columnDropdown.style.display = columnDropdown.style.display==="none" ? "block" : "none";
 });
 
 document.getElementById("refreshBtn").addEventListener("click",()=>buildTable());
