@@ -22,19 +22,13 @@ td:first-child, th:first-child{
     font-weight: bold;
     z-index:3;
 }
-
-/* رنگ‌بندی ردیف‌ها کاملاً متمایز */
 tr.row-0{background:#fef9f7;}
 tr.row-1{background:#f7f7ff;}
 tr.row-2{background:#f7fff7;}
 tr.row-3{background:#fff7f7;}
 tr.row-4{background:#f7f7f7;}
 tr:hover{background:#cbd5e1;}
-
-/* رنگ سرستون‌ها */
 thead th{background:#1976d2}
-
-/* موبایل: مخفی کردن ستون غیرضروری */
 @media(max-width:768px){
   table{font-size:10px;}
   th:nth-child(8), td:nth-child(8),
@@ -47,8 +41,6 @@ thead th{background:#1976d2}
   table{font-size:9px;}
   th,td{padding:1px 2px;}
 }
-
-/* رنگ MACD و Signal */
 td.macd-positive{color:green;}
 td.macd-negative{color:red;}
 </style>
@@ -81,7 +73,7 @@ td.macd-negative{color:red;}
 <th>Symbol</th><th>Interval</th><th>Price</th><th>RSI</th><th>EMA9</th><th>EMA20</th><th>EMA50</th>
 <th>EMA100</th><th>EMA200</th><th>MACD</th><th>Signal</th><th>Support</th><th>Resistance</th>
 <th>OnSupport</th><th>OnResistance</th><th>Breakout</th><th>Bounce</th><th>Golden</th><th>Rally</th>
-<th>Strategy</th><th>Correction</th>
+<th>Strategy</th><th>Correction</th><th>ریسک/فرصت</th>
 </tr>
 </thead>
 <tbody></tbody>
@@ -117,6 +109,23 @@ function correctionBadge({last, ema20v, ema50v, rsiv, macdv, sigv}) {
     return (last<ema20v && last<ema50v && rsiv<50 && macdv<sigv)?'⚠️':'✅';
 }
 
+// تابع جدید ریسک/فرصت
+function riskOpportunity({last, ema20v, ema50v, ema200v, rsiv, macdv, sigv, onSupport, onResistance, breakout, bounce}) {
+    if(last>ema20v && last>ema50v && ema50v>ema200v && macdv>sigv){
+        if(onSupport==="✅" || breakout==="✅"){
+            return "⚡ فرصت قوی – خرید مناسب";
+        }
+        return "✅ فرصت متوسط – روند صعودی";
+    }
+    if(last<ema20v && last<ema50v && ema50v<ema200v && macdv<sigv){
+        if(onResistance==="✅"){
+            return "⚠️ ریسک بالا – احتمال ریزش / صبر کنید";
+        }
+        return "⚠️ ریسک متوسط – مراقب باشید";
+    }
+    return "🟡 نوسان – صبر یا معامله کوچک";
+}
+
 async function buildTable(symbolFilter=null){
 const tbody=document.querySelector("#crypto-table tbody");tbody.innerHTML="";document.getElementById("refreshBtn").disabled=true;
 const symbolsToProcess=symbolFilter?SYMBOLS.filter(s=>s.includes(symbolFilter)):SYMBOLS;
@@ -142,24 +151,23 @@ const ema50Prev=ema(closes,50).slice(-2)[0]||0;const ema200Prev=ema(closes,200).
 const golden=ema50Prev<ema200Prev&&ema50v>ema200v?"✅":"—";
 const rally=last>ema9v&&last>ema20v&&rsiv>70&&macdv>sigv?"✅":"—";
 
+const riskOp = riskOpportunity({last, ema20v, ema50v, ema200v, rsiv, macdv, sigv, onSupport, onResistance, breakout, bounce});
+
 const tr=document.createElement("tr");tr.className=`row-${si%5}`;
 const cells=[symbol, interval, fmt(last,4), fmt(rsiv,2), fmt(ema9v,4), fmt(ema20v,4), fmt(ema50v,4),
 fmt(ema100v,4), fmt(ema200v,4), fmt(macdv,6), fmt(sigv,6),
-fmt(support,4), fmt(resistance,4), onSupport, onResistance, breakout, bounce, golden, rally, strategy, correction];
+fmt(support,4), fmt(resistance,4), onSupport, onResistance, breakout, bounce, golden, rally, strategy, correction, riskOp];
 
 cells.forEach((val, idx)=>{ 
     const td=document.createElement("td"); 
     td.textContent=val; 
-
-    // رنگ MACD و Signal
     if(idx===9 || idx===10){ 
         td.className = macdv>=sigv ? "macd-positive" : "macd-negative"; 
     }
-
     tr.appendChild(td); 
 });
 tbody.appendChild(tr);
-}catch(err){const tr=document.createElement("tr");tr.innerHTML=`<td colspan="21" style="color:red">خطا برای ${symbol} (${interval}): ${err.message}</td>`;tbody.appendChild(tr);}
+}catch(err){const tr=document.createElement("tr");tr.innerHTML=`<td colspan="22" style="color:red">خطا برای ${symbol} (${interval}): ${err.message}</td>`;tbody.appendChild(tr);}
 }}
 document.getElementById("lastUpdate").textContent="آخرین بروزرسانی: "+new Date().toLocaleString();
 document.getElementById("refreshBtn").disabled=false;
