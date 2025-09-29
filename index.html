@@ -66,6 +66,11 @@ td.macd-negative{color:red;}
 <span id="lastUpdate" style="font-size:10px;color:#546e7a;margin-left:5px;"></span>
 </div>
 
+<!-- پنل کنترل ستون‌ها -->
+<div id="column-controls" style="font-size:11px;margin:5px 10px;">
+  <strong>نمایش ستون‌ها:</strong>
+</div>
+
 <div class="table-wrap">
 <table id="crypto-table">
 <thead>
@@ -178,6 +183,28 @@ const table=document.getElementById("crypto-table");let txt=Array.from(table.que
 table.querySelectorAll("tbody tr").forEach(row=>{txt+=Array.from(row.querySelectorAll("td")).map(td=>td.textContent.trim()).join("\t")+"\n";});
 const blob=new Blob([txt],{type:"text/plain;charset=utf-8"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="crypto_data.txt";a.click();URL.revokeObjectURL(a.href);
 }
+
+// ایجاد کنترل ستون‌ها
+const tableElem = document.getElementById("crypto-table");
+const columns = Array.from(tableElem.querySelectorAll("thead th")).map(th => th.textContent.trim());
+const columnControls = document.getElementById("column-controls");
+columns.forEach((col, idx) => {
+    const label = document.createElement("label");
+    label.style.marginRight = "5px";
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.checked = true;
+    cb.dataset.colIndex = idx;
+    cb.addEventListener("change", (e) => {
+        const index = e.target.dataset.colIndex;
+        const show = e.target.checked;
+        tableElem.querySelectorAll("thead th:nth-child(" + (parseInt(index)+1) + "), tbody td:nth-child(" + (parseInt(index)+1) + ")")
+             .forEach(el => el.style.display = show ? "" : "none");
+    });
+    label.appendChild(cb);
+    label.appendChild(document.createTextNode(" " + col));
+    columnControls.appendChild(label);
+});
 
 document.getElementById("refreshBtn").addEventListener("click",()=>buildTable());
 document.getElementById("searchBox").addEventListener("change",e=>buildTable(e.target.value.toUpperCase()));
